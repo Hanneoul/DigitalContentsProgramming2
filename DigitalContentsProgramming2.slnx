@@ -7,4 +7,5 @@
   <Project Path="Lecture03_01/Lecture03_01.vcxproj" Id="5dda6e01-8816-4c3f-b2c9-c18d2e822ef2" />
   <Project Path="Lecture03_02/Lecture03_02.vcxproj" Id="9a98b358-ff92-474f-8af1-7dd0b16d50c9" />
   <Project Path="Lecture04_01/Lecture04_01.vcxproj" Id="c8fed1fc-36e0-4654-852a-196928a0d453" />
+  <Project Path="Lecture04_02/Lecture04_02.vcxproj" Id="20c086a5-ade1-4cfd-8503-1e684eab269f" />
 </Solution>
