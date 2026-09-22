@@ -3,9 +3,15 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
   <Project Path="Lecture02_01/Lecture02_01.vcxproj" Id="9a5c2e1f-0ada-4b97-8ec6-ecdf5936fa74" />
   <Project Path="Lecture03_01/Lecture03_01.vcxproj" Id="5dda6e01-8816-4c3f-b2c9-c18d2e822ef2" />
   <Project Path="Lecture03_02/Lecture03_02.vcxproj" Id="9a98b358-ff92-474f-8af1-7dd0b16d50c9" />
   <Project Path="Lecture04_01/Lecture04_01.vcxproj" Id="c8fed1fc-36e0-4654-852a-196928a0d453" />
   <Project Path="Lecture04_02/Lecture04_02.vcxproj" Id="eea8e1c1-5535-4271-93a4-dd11b875e48e" />
+  <Project Path="Lecture05_01_Array/Lecture05_01_Array.vcxproj" Id="9d3780e1-5812-4446-99c7-8b7ceb0cf590" />
+  <Project Path="Lecture05_02/Lecture05_02.vcxproj" Id="5120cb18-0cbd-493d-9714-fd04b6e991b0" />
+  <Project Path="Lecture05_03/Lecture05_03.vcxproj" Id="2adb5e7c-c3f1-44a6-aa09-9f1204a0e33f" />
 </Solution>
