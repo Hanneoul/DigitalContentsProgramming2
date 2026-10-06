@@ -24,6 +24,7 @@
     <ProjectGuid>{364b8265-2375-4942-9b4e-a65d3dd48213}</ProjectGuid>
     <RootNamespace>Lecture0706</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Lecture07_06_realloc</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
