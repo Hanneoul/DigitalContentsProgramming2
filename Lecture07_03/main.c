@@ -65,6 +65,7 @@ int main(void)
 
     // 올바른 활용법: 배열의 실제 요소 개수를 계산해서 함께 전달함
     int arrayLength = sizeof(arr) / sizeof(arr[0]); // 64 / 4 = 16개
+
     printArray(arr, arrayLength);
 
     return 0;
