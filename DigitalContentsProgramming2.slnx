@@ -28,4 +28,11 @@
   <Project Path="Lecture07_04/Lecture07_04.vcxproj" Id="9e6fff6c-136e-4a0c-83e8-957cb929f00d" />
   <Project Path="Lecture07_05/Lecture07_05.vcxproj" Id="e689a5cc-8872-4b1a-9058-d9230459c93e" />
   <Project Path="Lecture07_06/Lecture07_06.vcxproj" Id="364b8265-2375-4942-9b4e-a65d3dd48213" />
+  <Project Path="Lecture08_01/Lecture08_01.vcxproj" Id="f7a04695-8f4f-4282-8752-72a0e48a18a9" />
+  <Project Path="Lecture08_02/Lecture08_02.vcxproj" Id="01ad7f8f-e282-48c8-8de8-c5cf9f2a536d" />
+  <Project Path="Lecture08_03/Lecture08_03.vcxproj" Id="073dd5c6-ecf2-4d39-9f37-987f2453686d" />
+  <Project Path="Lecture08_04/Lecture08_04.vcxproj" Id="7671e7b9-35ba-44e5-a12a-a4609101568b" />
+  <Project Path="Lecture08_05/Lecture08_05.vcxproj" Id="d2da6eae-ab60-45e4-955d-9ed2b3cebda5" />
+  <Project Path="Lecture08_06/Lecture08_06.vcxproj" Id="a52e3a81-f2ed-4d5f-b583-5b4f79cc2dd6" />
+  <Project Path="Lecture08_07/Lecture08_07.vcxproj" Id="fde768c4-2a3f-426a-be5d-11b2220a6b2b" />
 </Solution>
