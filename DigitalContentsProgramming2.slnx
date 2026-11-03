@@ -36,4 +36,8 @@
   <Project Path="Lecture08_05/Lecture08_05.vcxproj" Id="d2da6eae-ab60-45e4-955d-9ed2b3cebda5" />
   <Project Path="Lecture08_06/Lecture08_06.vcxproj" Id="a52e3a81-f2ed-4d5f-b583-5b4f79cc2dd6" />
   <Project Path="Lecture08_07/Lecture08_07.vcxproj" Id="fde768c4-2a3f-426a-be5d-11b2220a6b2b" />
+  <Project Path="Lecture09_01/Lecture09_01.vcxproj" Id="f2887838-6823-46b7-84ab-16d635b12be7" />
+  <Project Path="Lecture09_02/Lecture09_02.vcxproj" Id="17f9f97a-bfc1-4dda-aab5-44db650d051a" />
+  <Project Path="Lecture09_03/Lecture09_03.vcxproj" Id="49ddca14-6a0d-404d-abf7-dfebd68c7a66" />
+  <Project Path="Lecture09_04/Lecture09_04.vcxproj" Id="62405ede-dbf9-4e8e-8f46-4b5355fa3705" />
 </Solution>
