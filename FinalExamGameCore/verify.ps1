@@ -1,24 +1,61 @@
+param(
+    [string[]]$Platforms = @('x64', 'Win32'),
+    [string[]]$Configurations = @('Debug', 'Release')
+)
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $install = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
 if (!$install) { throw 'Visual Studio with MSBuild is required.' }
 $msbuild = Join-Path $install 'MSBuild\Current\Bin\MSBuild.exe'
-foreach ($platform in @('x64', 'Win32')) {
-    foreach ($configuration in @('Debug', 'Release')) {
+foreach ($platform in $Platforms) {
+    foreach ($configuration in $Configurations) {
         & $msbuild (Join-Path $projectRoot 'FinalExamGameCore.vcxproj') /nologo /verbosity:minimal /t:Build "/p:Configuration=$configuration" "/p:Platform=$platform"
         if ($LASTEXITCODE -ne 0) { throw "Build failed: $platform $configuration" }
         $exe = Join-Path $projectRoot "bin\$platform\$configuration\FinalExamGameCore.exe"
         & $exe --self-test
         if ($LASTEXITCODE -ne 0) { throw "Self-test failed: $platform $configuration" }
-        $output = & $exe --fast --plain --max-rounds 100
-        if ($LASTEXITCODE -ne 0 -or !($output -match '^WINNER: P[0-5]$')) { throw "Game failed: $platform $configuration" }
+        $output = & $exe --auto --fast --plain --max-turns 12
+        if ($LASTEXITCODE -ne 0 -or !($output -match '^(WINNER: [PH][0-5]|DRAW:)' )) { throw "Game failed: $platform $configuration" }
         $runDirectory = ($output | Where-Object { $_ -like 'Snapshots / diagnostics: *' }) -replace '^Snapshots / diagnostics: ', ''
         $badLogs = Get-ChildItem -LiteralPath $runDirectory -Filter '*_diagnostics.log' | Where-Object Length -gt 0
         if ($badLogs) { throw "Unexpected diagnostics: $($badLogs.FullName)" }
-        Write-Host "PASS: $platform $configuration (self-test and complete game)"
+        # All seven files must describe exactly the same pre-resolution world.
+        $baseline = $null
+        foreach ($id in 0..6) {
+            $stateLines = Get-Content (Join-Path $runDirectory "player${id}_state.dat")
+            $fields = $stateLines[1] -split ' '
+            if ([int]$fields[2] -ne $id) { throw 'Snapshot self ID mismatch.' }
+            $fields[2] = 'SELF'
+            $stateLines[1] = $fields -join ' '
+            $normalized = $stateLines -join "`n"
+            if ($null -eq $baseline) { $baseline = $normalized }
+            elseif ($baseline -ne $normalized) { throw 'Players received different turn states.' }
+        }
+        Write-Host "PASS: $platform $configuration (self-test and simultaneous game)"
     }
 }
+
+# Exercise real getchar input: pickup, drop, re-pickup, move, escape and ESC/EOF.
+$verificationRoot = Join-Path $projectRoot 'verification'
+New-Item -ItemType Directory -Force -Path $verificationRoot | Out-Null
+$controlMap = Join-Path $verificationRoot 'controls.dat'
+$rows = @('#######', '#HKE..#', '#.....#', '#.....#', '#0.1.2#', '#3.4.5#', '#######')
+$rows | ForEach-Object {
+    $line = ''
+    foreach ($ch in $_.ToCharArray()) {
+        $line += switch ($ch) { '#' { '##' } '.' { '  ' } 'H' { 'H0' } 'K' { '@-' } 'E' { '()' } default { 'P' + $ch } }
+    }
+    $line
+} | Set-Content -Encoding ascii $controlMap
+$controlExe = Join-Path $projectRoot 'bin\x64\Debug\FinalExamGameCore.exe'
+$output = 'lkkdd' | & $controlExe --fast --plain --map $controlMap --max-turns 10
+if ($LASTEXITCODE -ne 0 -or !($output -match '^WINNER: H0$')) { throw 'Manual pickup/drop/escape failed.' }
+$output = [string][char]27 | & $controlExe --fast --plain --map $controlMap
+if ($LASTEXITCODE -ne 0 -or !($output -match '^QUIT:')) { throw 'ESC failed.' }
+$output = '' | & $controlExe --fast --plain --map $controlMap
+if ($LASTEXITCODE -ne 0 -or !($output -match '^QUIT:')) { throw 'EOF failed.' }
+Write-Host 'PASS: getchar pickup/drop/escape, ESC and EOF'
 
 # Build a separate fault-injection copy; never change the submitted student files.
 $probeRoot = Join-Path $projectRoot 'verification\probe'
@@ -56,7 +93,7 @@ $oldProbe = $env:FGC_TEST_PROBE
 try {
     foreach ($mode in @('leak', 'timeout', 'crash', 'invalid', 'double-close')) {
         $env:FGC_TEST_PROBE = $mode
-        $output = & $probeExe --fast --plain --max-rounds 1
+        $output = & $probeExe --auto --fast --plain --max-turns 1
         if ($LASTEXITCODE -ne 0 -or !($output -match '^DRAW:')) { throw "Core did not survive: $mode" }
         $runDirectory = ($output | Where-Object { $_ -like 'Snapshots / diagnostics: *' }) -replace '^Snapshots / diagnostics: ', ''
         $log = Get-Content -Raw (Join-Path $runDirectory 'player0_diagnostics.log')

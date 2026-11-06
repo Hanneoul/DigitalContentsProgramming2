@@ -10,6 +10,7 @@ typedef struct OpenFile {
 static OpenFile files[256];
 static int errors;
 
+/* Route CRT diagnostics to the per-worker stderr log and check heap integrity. */
 void diagnostics_begin(void)
 {
 #ifdef _DEBUG
@@ -23,6 +24,7 @@ void diagnostics_begin(void)
 #endif
 }
 
+/* Remember the opening source location without allocating tracker memory. */
 FILE *checked_fopen(const char *path, const char *mode, const char *source, int line)
 {
     int i;
@@ -43,6 +45,7 @@ FILE *checked_fopen(const char *path, const char *mode, const char *source, int 
     return NULL;
 }
 
+/* Provide the same tracked ownership for the secure CRT fopen_s API. */
 int checked_fopen_s(FILE **out, const char *path, const char *mode, const char *source, int line)
 {
     if (!out || !path || !mode) return EINVAL;
@@ -50,6 +53,7 @@ int checked_fopen_s(FILE **out, const char *path, const char *mode, const char *
     return *out ? 0 : (errno ? errno : EIO);
 }
 
+/* Remove known streams; report unknown/double closes rather than using stale FILEs. */
 int checked_fclose(FILE *stream, const char *source, int line)
 {
     int i;
@@ -64,6 +68,7 @@ int checked_fclose(FILE *stream, const char *source, int line)
     return EOF;
 }
 
+/* Report and close leaked streams, then dump remaining CRT heap allocations. */
 int diagnostics_end(void)
 {
     int i, leaks = errors;
