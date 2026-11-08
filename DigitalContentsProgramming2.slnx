@@ -5,6 +5,12 @@
   </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="Lecture10.md" />
+    <File Path="Lecture11.md" />
+    <File Path="Lecture12.md" />
+    <File Path="Lecture13.md" />
+    <File Path="Lecture14.md" />
+    <File Path="Lecture.md" />
   </Folder>
   <Project Path="FinalExam01/FinalExam01.vcxproj" Id="1cd4e74c-9216-4bce-84c2-e130aa25696e" />
   <Project Path="FinalExamGameCore/FinalExamGameCore.vcxproj" Id="1fbab031-488f-4b66-9871-829f5d72e1f6" />
@@ -41,4 +47,21 @@
   <Project Path="Lecture09_02/Lecture09_02.vcxproj" Id="17f9f97a-bfc1-4dda-aab5-44db650d051a" />
   <Project Path="Lecture09_03/Lecture09_03.vcxproj" Id="49ddca14-6a0d-404d-abf7-dfebd68c7a66" />
   <Project Path="Lecture09_04/Lecture09_04.vcxproj" Id="62405ede-dbf9-4e8e-8f46-4b5355fa3705" />
+  <Project Path="Lecture10_01/Lecture10_01.vcxproj" Id="41a401c0-baa5-4a0a-85e2-373fca3bc1df" />
+  <Project Path="Lecture10_02/Lecture10_02.vcxproj" Id="7efb5dad-f508-43c2-b00c-89b757554592" />
+  <Project Path="Lecture10_03/Lecture10_03.vcxproj" Id="bb22a92b-d5b5-4c01-bed0-f31b5cf730b9" />
+  <Project Path="Lecture10_04/Lecture10_04.vcxproj" Id="afcf2625-ffdd-487a-bc64-f1257f37df67" />
+  <Project Path="Lecture10_05/Lecture10_05.vcxproj" Id="65dbe572-0752-4413-9616-f4dde66ee571" />
+  <Project Path="Lecture11_01/Lecture11_01.vcxproj" Id="38c8088a-5c35-4435-abff-1f82ece57be2" />
+  <Project Path="Lecture11_02/Lecture11_02.vcxproj" Id="ba507974-b4b5-45c6-b0f1-3b70719f905f" />
+  <Project Path="Lecture11_03/Lecture11_03.vcxproj" Id="d2f6beac-081e-4dbd-bec0-3bdd56220703" />
+  <Project Path="Lecture11_04/Lecture11_04.vcxproj" Id="763a355f-aace-4555-b286-8e54f9d5bb98" />
+  <Project Path="Lecture12_01/Lecture12_01.vcxproj" Id="37ea53cc-2d8a-4245-81d2-68997975aad1" />
+  <Project Path="Lecture12_02/Lecture12_02.vcxproj" Id="a7b3658e-efbd-498c-b9b2-69092dd3eeaf" />
+  <Project Path="Lecture12_03/Lecture12_03.vcxproj" Id="98931ba5-a638-46d3-9ec4-8e60251b6670" />
+  <Project Path="Lecture12_04/Lecture12_04.vcxproj" Id="c91e2d3a-34d5-4ce2-8f08-5d590cdec4e6" />
+  <Project Path="Lecture13_01/Lecture13_01.vcxproj" Id="f5341c70-0d88-4c05-b0f3-e59c8485ed21" />
+  <Project Path="Lecture13_02/Lecture13_02.vcxproj" Id="98059716-9ce4-4543-8a3e-05e826f6b5bc" />
+  <Project Path="Lecture13_03/Lecture13_03.vcxproj" Id="11285b47-8a96-48a0-a41e-ba5ffef85d01" />
+  <Project Path="Lecture14_01/Lecture14_01.vcxproj" Id="a8975fcd-76d8-49e9-8b10-21aadb4d6c9e" />
 </Solution>
