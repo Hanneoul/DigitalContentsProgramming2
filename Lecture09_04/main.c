@@ -58,12 +58,14 @@
 #include <stdlib.h>
 
   // 블록 단위 입출력(fread, fwrite) 실습을 위한 구조체
-typedef struct {
+typedef struct 
+{
     int id;
     char name[20];
 } User;
 
-int main(void) {
+int main(void) 
+{
     FILE* fp = NULL;
     errno_t err;
 
@@ -87,7 +89,8 @@ int main(void) {
     printf("2단계: fgetc를 이용한 문자 읽기 결과 -> ");
     int ch;
     // fgetc는 파일을 읽다가 끝(EOF)에 도달하면 EOF(-1)를 반환한다.
-    while ((ch = fgetc(fp)) != EOF) {
+    while ((ch = fgetc(fp)) != EOF) 
+    {
         putchar(ch); // 화면에 한 글자씩 출력
     }
     printf("\n");
@@ -176,15 +179,18 @@ int main(void) {
     // [실습 5] feof와 ferror, 그리고 파일 삭제(remove)
     // --------------------------------------------------------------------------
     err = fopen_s(&fp, "char_test.txt", "r");
-    if (err == 0 && fp != NULL) {
+    if (err == 0 && fp != NULL) 
+    {
         int temp;
         // 끝까지 읽을 때까지 반복
-        while ((temp = fgetc(fp)) != EOF) {
+        while ((temp = fgetc(fp)) != EOF) 
+        {
             // 내용 소모
         }
 
         // feof 검사: 정말로 파일의 끝(EOF)에 도달해서 끝난 것인지 확인
-        if (feof(fp)) {
+        if (feof(fp)) 
+        {
             printf("10단계: feof 함수를 통해 파일의 끝에 정상적으로 도달했음을 감지함.\n");
         }
         fclose(fp);
