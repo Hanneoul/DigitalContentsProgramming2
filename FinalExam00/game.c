@@ -127,6 +127,9 @@ void game_resolve(Game *g, const Command commands[PLAYER_COUNT])
         if (!active[i]) continue;
         if (command < 0 || command >= COMMAND_COUNT) { valid[i] = 0; continue; }
         kind[i] = command / 4;
+        /* Ownership is checked in the frozen turn-start state. Forbidden attacks
+           use the normal cancellation damage (one HP, capped once per turn). */
+        if (kind[i] == 1 && g->key_owner == i) { valid[i] = 0; continue; }
         target[i].x += dx[command % 4]; target[i].y += dy[command % 4];
         if (kind[i] == 1) continue; /* Attacks can point at empty space or boundaries. */
         if (!inside(g, target[i]) || g->terrain[target[i].y][target[i].x] == '#') valid[i] = 0;

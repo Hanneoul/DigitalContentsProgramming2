@@ -188,10 +188,45 @@ static void test_files(void)
     DeleteFileA(path); DeleteFileA(log_path);
 }
 
+/* A carrier cannot attack in any direction, and a fatal penalty drops the key. */
+static void test_carrier_attack_penalty(void)
+{
+    Game g;
+    Command c[PLAYER_COUNT];
+    const int dx[4] = {0, 0, -1, 1}, dy[4] = {-1, 1, 0, 0};
+    int d;
+    for (d = 0; d < 4; ++d) {
+        arena(&g, c);
+        place(&g, 0, 3, 3, 2);
+        place(&g, 1, 3 + dx[d], 3 + dy[d], 2);
+        g.key_owner = 0;
+        c[0] = c[1] = (Command)(COMMAND_ATTACK_UP + d);
+        game_resolve(&g, c);
+        CHECK(g.cancelled[0] && g.players[0].hp == 1 && g.damaged[0]);
+        CHECK(g.players[1].hp == 2 && !g.attack[3 + dy[d]][3 + dx[d]]);
+        CHECK(g.key_owner == 0);
+    }
+    arena(&g, c);
+    place(&g, 0, 2, 2, 1);
+    g.key_owner = 0;
+    c[0] = COMMAND_ATTACK_UP;
+    game_resolve(&g, c);
+    CHECK(g.players[0].hp == 0 && g.players[0].deaths == 1 && g.players[0].rest == 1);
+    CHECK(g.key_owner == -1 && g.key.x == 2 && g.key.y == 2);
+    /* Incoming attack and command penalty still respect the original damage cap. */
+    arena(&g, c);
+    place(&g, 0, 2, 2, 2); place(&g, 1, 2, 3, 2);
+    g.key_owner = 0;
+    c[0] = c[1] = COMMAND_ATTACK_UP;
+    game_resolve(&g, c);
+    CHECK(g.players[0].hp == 1 && g.players[1].hp == 2);
+}
+
 /* Instructor regression entry point; normal gameplay never executes test fixtures. */
 int self_test(void)
 {
     test_collisions(); test_attacks(); test_items(); test_respawn(); test_files();
+    test_carrier_attack_penalty();
     printf("Self-test: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

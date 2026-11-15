@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     const char *map_path;
     char *slash;
     DWORD length;
-    int i, max_turns = 200, delay = 2000, plain = 0, automatic = 0, result = 0;
+    int i, max_turns = 200, delay = 1000, plain = 0, automatic = 0, result = 0;
     if ((argc == 5 || argc == 6) && strcmp(argv[1], "--worker") == 0) {
         int player;
         if (!number(argv[2], 0, PLAYER_COUNT - 1, &player)) return 90;
@@ -87,13 +87,13 @@ int main(int argc, char **argv)
         for (i = 0; i < PLAYER_COUNT; ++i)
             if (game.last[i] >= COMMAND_ATTACK_UP && game.last[i] <= COMMAND_ATTACK_RIGHT && !game.cancelled[i] &&
                 (game.players[i].hp > 0 || game.damaged[i])) attacks = 1;
-        /* A normal turn is shown for two seconds: attack overlay for the first one. */
+        /* One second total: attack overlay gets half, resolved state gets the rest. */
         if (attacks) {
             display_game(&game, "공격 범위 ** / 노란 배경, 피격 빨간 배경 / 사망 !!", 1);
-            if (delay) Sleep(1000);
+            if (delay) Sleep((DWORD)(delay / 2));
         }
         display_game(&game, "동시 턴 판정 완료", 0);
-        if (delay) Sleep((DWORD)(attacks ? delay - 1000 : delay));
+        if (delay) Sleep((DWORD)(delay - (attacks ? delay / 2 : 0)));
     }
     if (game.winner >= 0) printf("WINNER: P%d - 탈출 성공! P%d 플레이어가 이겼습니다.\n", game.winner, game.winner);
     else puts("DRAW: 최대 턴에 도달했습니다.");

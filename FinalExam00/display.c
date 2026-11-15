@@ -33,7 +33,9 @@ void display_game(const Game *g, const char *message, int effects)
             }
             if (g->terrain[y][x] == '#') printf("%s##%s", esc("\x1b[100;90m"), esc("\x1b[0m"));
             else if (occupant >= 0) {
-                const char *paint = effects && g->damaged[occupant] ? "\x1b[41;97;1m" :
+                /* Bright yellow / black keeps the carrier ID legible in every frame. */
+                const char *paint = g->key_owner == occupant ? "\x1b[103;30;1m" :
+                    effects && g->damaged[occupant] ? "\x1b[41;97;1m" :
                     effects && g->attack[y][x] ? "\x1b[43;30m" : colors[occupant];
                 printf("%s%c%d%s", esc(paint), 'P',
                     occupant, esc("\x1b[0m"));
@@ -53,10 +55,11 @@ void display_game(const Game *g, const char *message, int effects)
     printf("%s%s%s\n", esc(g->winner >= 0 ? "\x1b[92m" : "\x1b[91m"),
         g->winner >= 0 ? "문이 열렸습니다! 탈출 성공." : "문이 잠겼습니다. 열쇠 소유자만 출입 가능합니다.", esc("\x1b[0m"));
     puts("P0~P5 자동 경쟁 | 이동 0~3 / 공격 4~7 / 집기 8~11 / 버리기 12~15 | Ctrl+C 종료");
+    puts("열쇠 소지자: 밝은 노란 배경 / 검은 글자 | 소지 중 공격 시 취소 및 HP -1");
     for (i = 0; i < PLAYER_COUNT; ++i) {
         const PlayerState *p = &g->players[i];
         printf("%s%c%d%s (%d,%d) HP:%d/2 사망:%u 휴식:%" PRIu64 " 명령:%d%s%s%s\n",
-            esc(effects && g->damaged[i] ? "\x1b[41;97m" : colors[i]), 'P',
+            esc(g->key_owner == i ? "\x1b[103;30;1m" : effects && g->damaged[i] ? "\x1b[41;97m" : colors[i]), 'P',
             i, esc("\x1b[0m"), p->pos.x, p->pos.y, p->hp, p->deaths, p->rest,
             (int)g->last[i], g->key_owner == i ? " [KEY]" : "", g->cancelled[i] ? " [취소]" : "", g->damaged[i] ? " [피격 -1]" : "");
     }
