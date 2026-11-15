@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     if (!CreateDirectoryA(run_dir, NULL)) { fputs("Cannot create snapshot directory.\n", stderr); return 1; }
     display_init(plain);
     if (!automatic) {
+        display_game(&game, "Press 's' Key", 0);
         input_init();
         if (!input_wait_start()) { puts("START CANCELLED: EOF"); return diagnostics_end() ? 1 : 0; }
     }
