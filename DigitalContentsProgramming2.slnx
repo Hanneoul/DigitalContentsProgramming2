@@ -5,12 +5,6 @@
   </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
-    <File Path="Lecture10.md" />
-    <File Path="Lecture11.md" />
-    <File Path="Lecture12.md" />
-    <File Path="Lecture13.md" />
-    <File Path="Lecture14.md" />
-    <File Path="Lecture.md" />
   </Folder>
   <Project Path="FinalExam01/FinalExam01.vcxproj" Id="1cd4e74c-9216-4bce-84c2-e130aa25696e" />
   <Project Path="FinalExamGameCore/FinalExamGameCore.vcxproj" Id="1fbab031-488f-4b66-9871-829f5d72e1f6" />
