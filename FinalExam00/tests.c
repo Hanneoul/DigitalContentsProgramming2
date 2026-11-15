@@ -236,34 +236,140 @@ static Command role_command(Game *g, int id)
     return result;
 }
 
-/* Runner pursues objective through a detour; hunters pursue/attack reachable rivals. */
+/* Every profile picks up the key and heads for exit, including prior hunters. */
 static void test_role_ai(void)
 {
     Game g;
     Command c[PLAYER_COUNT];
-    int hunter;
-    arena(&g, c); place(&g, 0, 1, 1, 2);
-    g.key.x = 2; g.key.y = 1;
-    CHECK(role_command(&g, 0) == COMMAND_PICK_RIGHT);
-    g.key_owner = 0; g.exit.x = 2; g.exit.y = 1; g.terrain[1][2] = 'E';
-    CHECK(role_command(&g, 0) == COMMAND_RIGHT);
-    arena(&g, c); place(&g, 0, 1, 1, 2);
-    g.key.x = 4; g.key.y = 1;
-    memset(g.terrain[0], '#', 7); g.terrain[1][2] = '#';
-    CHECK(role_command(&g, 0) == COMMAND_DOWN);
-    g.key_owner = 0; g.exit.x = 4; g.exit.y = 1; g.terrain[1][4] = 'E';
-    CHECK(role_command(&g, 0) == COMMAND_DOWN);
-    for (hunter = 1; hunter <= 3; hunter += 2) {
-        arena(&g, c); place(&g, hunter, 1, 1, 2); place(&g, 0, 2, 1, 2);
-        CHECK(role_command(&g, hunter) == COMMAND_ATTACK_RIGHT);
-        g.players[0].pos.y = 2;
-        CHECK(role_command(&g, hunter) == COMMAND_ATTACK_DOWN);
-        g.players[0].pos.x = 4; g.players[0].pos.y = 1;
+    int id;
+    for (id = 0; id < PLAYER_COUNT; ++id) {
+        arena(&g, c); place(&g, id, 1, 1, 2);
+        g.key.x = 2; g.key.y = 1;
+        CHECK(role_command(&g, id) == COMMAND_PICK_RIGHT);
+        g.key_owner = id; g.exit.x = 2; g.exit.y = 1; g.terrain[1][2] = 'E';
+        CHECK(role_command(&g, id) == COMMAND_RIGHT);
+        arena(&g, c); place(&g, id, 1, 1, 2);
+        g.key_owner = id; g.exit.x = 4; g.exit.y = 1; g.terrain[1][4] = 'E';
         memset(g.terrain[0], '#', 7); g.terrain[1][2] = '#';
-        CHECK(role_command(&g, hunter) == COMMAND_DOWN);
-        arena(&g, c); place(&g, hunter, 3, 3, 2); g.key_owner = hunter;
-        CHECK(role_command(&g, hunter) == COMMAND_DROP_UP);
+        CHECK(role_command(&g, id) == COMMAND_DOWN);
     }
+    arena(&g, c); place(&g, 1, 1, 1, 2); place(&g, 0, 2, 1, 2);
+    CHECK(role_command(&g, 1) == COMMAND_ATTACK_RIGHT);
+    g.players[0].pos.y = 2;
+    CHECK(role_command(&g, 1) == COMMAND_ATTACK_DOWN);
+    /* Adjacent key beats combat for an attacker too. */
+    g.key.x = 2; g.key.y = 1;
+    CHECK(role_command(&g, 1) == COMMAND_PICK_RIGHT);
+}
+
+/* Boundaries and exact semantics: one escape disables the no-escape cutoff. */
+static void test_no_escape_draw(void)
+{
+    Game g;
+    Command c[PLAYER_COUNT];
+    int id;
+    arena(&g, c);
+    g.turn = 999; game_check_no_escape(&g);
+    CHECK(!g.game_over && !g.draw);
+    g.turn = 1000; game_check_no_escape(&g);
+    CHECK(g.game_over && g.draw && g.finished_count == 0 && g.winner == -1);
+    for (id = 0; id < PLAYER_COUNT; ++id) CHECK(g.players[id].rank == 0);
+    arena(&g, c); g.turn = 1000;
+    place(&g, 0, 5, 6, 2); g.key_owner = 0; c[0] = COMMAND_RIGHT;
+    game_resolve(&g, c);
+    CHECK(g.finished_count == 1 && !g.game_over && !g.draw);
+    g.turn = 2000; game_check_no_escape(&g);
+    CHECK(!g.game_over && !g.draw);
+}
+
+/* Escape order survives later turns; removed players neither respawn nor obstruct. */
+static void test_escape_ranking(void)
+{
+    Game g;
+    Command c[PLAYER_COUNT];
+    const int order[5] = {2, 0, 4, 1, 3};
+    int n, id;
+    arena(&g, c);
+    for (n = 0; n < 5; ++n) {
+        id = order[n];
+        game_begin_turn(&g);
+        place(&g, id, 5, 6, 2);
+        g.key_owner = id; c[id] = COMMAND_RIGHT;
+        game_resolve(&g, c);
+        CHECK(g.players[id].rank == n + 1 && g.players[id].hp == 0);
+        CHECK(g.finish_order[n] == id && g.finish_turn[n] == g.turn);
+        CHECK(g.key_owner == -1 && g.key.x == g.key_start.x && g.key.y == g.key_start.y);
+        CHECK(g.winner == 2);
+        if (n < 4) CHECK(!g.game_over && g.finished_count == n + 1);
+    }
+    CHECK(g.game_over && g.finished_count == PLAYER_COUNT);
+    CHECK(g.finish_order[5] == 5 && g.players[5].rank == 6 && g.finish_turn[5] == -1);
+    game_begin_turn(&g);
+    for (id = 0; id < PLAYER_COUNT; ++id) CHECK(g.players[id].hp == 0 && g.players[id].rank > 0);
+    game_resolve(&g, c);
+    CHECK(g.finished_count == PLAYER_COUNT);
+}
+
+/* Unique-name storage: next free slot, no overwrite, and exactly 100-name exhaustion. */
+static void test_rank_files(void)
+{
+    Game g;
+    Command c[PLAYER_COUNT];
+    char directory[MAX_PATH], temp[MAX_PATH], saved[MAX_PATH], candidate[MAX_PATH];
+    HANDLE file;
+    FILE *readback;
+    int i;
+    arena(&g, c);
+    g.game_over = 1; g.finished_count = PLAYER_COUNT;
+    for (i = 0; i < PLAYER_COUNT; ++i) { g.finish_order[i] = PLAYER_COUNT - 1 - i; g.finish_turn[i] = i + 1; }
+    CHECK(GetTempPathA(sizeof(temp), temp) > 0);
+    if (!GetTempFileNameA(temp, "frk", 0, directory)) { CHECK(0); return; }
+    DeleteFileA(directory);
+    if (!CreateDirectoryA(directory, NULL)) { CHECK(0); return; }
+    CHECK(rank_save(&g, directory, saved, sizeof(saved)) == 1 && strstr(saved, "rank00.txt") != NULL);
+    CHECK(rank_save(&g, directory, saved, sizeof(saved)) == 1 && strstr(saved, "rank01.txt") != NULL);
+    for (i = 2; i < 100; ++i) {
+        snprintf(candidate, sizeof(candidate), "%s\\rank%02d.txt", directory, i);
+        file = CreateFileA(candidate, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        CHECK(file != INVALID_HANDLE_VALUE);
+        if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
+    }
+    CHECK(rank_save(&g, directory, saved, sizeof(saved)) == 0 && saved[0] == '\0');
+    /* Reuse a gap in the sequence, even if higher-numbered files already exist. */
+    snprintf(candidate, sizeof(candidate), "%s\\rank37.txt", directory);
+    CHECK(DeleteFileA(candidate));
+    CHECK(rank_save(&g, directory, saved, sizeof(saved)) == 1 && strstr(saved, "rank37.txt") != NULL);
+    snprintf(candidate, sizeof(candidate), "%s\\rank100.txt", directory);
+    CHECK(GetFileAttributesA(candidate) == INVALID_FILE_ATTRIBUTES);
+    snprintf(candidate, sizeof(candidate), "%s\\rank00.txt", directory);
+    readback = fopen(candidate, "r");
+    CHECK(readback != NULL);
+    if (readback) {
+        char content[2048];
+        size_t count = fread(content, 1, sizeof(content) - 1, readback);
+        content[count] = '\0'; fclose(readback);
+        CHECK(strstr(content, "1. P5 - ESCAPED") != NULL && strstr(content, "6. P0 - LAST REMAINING") != NULL);
+    }
+    snprintf(candidate, sizeof(candidate), "%s\\rank37.txt", directory);
+    CHECK(DeleteFileA(candidate));
+    g.draw = 1; g.finished_count = 0; g.turn = 1000;
+    CHECK(rank_save(&g, directory, saved, sizeof(saved)) == 1);
+    readback = fopen(saved, "r");
+    CHECK(readback != NULL);
+    if (readback) {
+        char content[2048];
+        size_t count = fread(content, 1, sizeof(content) - 1, readback);
+        content[count] = '\0'; fclose(readback);
+        CHECK(strstr(content, "P0 - DRAW (TIED)") && strstr(content, "P5 - DRAW (TIED)"));
+        CHECK(strstr(content, "ESCAPED") == NULL && strstr(content, "LAST REMAINING") == NULL);
+    }
+    for (i = 0; i < 100; ++i) {
+        snprintf(candidate, sizeof(candidate), "%s\\rank%02d.txt", directory, i);
+        DeleteFileA(candidate);
+    }
+    RemoveDirectoryA(directory);
+    g.game_over = 0;
+    CHECK(rank_save(&g, temp, saved, sizeof(saved)) == -1);
 }
 
 /* Instructor regression entry point; normal gameplay never executes test fixtures. */
@@ -272,6 +378,7 @@ int self_test(void)
     test_collisions(); test_attacks(); test_items(); test_respawn(); test_files();
     test_carrier_attack_penalty();
     test_role_ai();
+    test_escape_ranking(); test_rank_files(); test_no_escape_draw();
     printf("Self-test: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

@@ -7,13 +7,13 @@ int snapshot_write(const Game *g, int player, const char *path)
     int y, x, i, ok;
     FILE *file = fopen(path, "w");
     if (!file) return 0;
-    fprintf(file, "FGC_STATE 2\n%d %d %d %d %d %d %d %d %d %d\n",
+    fprintf(file, "FGC_STATE 3\n%d %d %d %d %d %d %d %d %d %d\n",
         g->size, g->turn, player, g->key_owner, g->key.x, g->key.y,
         g->key_start.x, g->key_start.y, g->exit.x, g->exit.y);
     for (i = 0; i < PLAYER_COUNT; ++i) {
         const PlayerState *p = &g->players[i];
-        fprintf(file, "%d %d %d %d %d %d %u %" PRIu64 "\n", i, p->pos.x, p->pos.y,
-            p->spawn.x, p->spawn.y, p->hp, p->deaths, p->rest);
+        fprintf(file, "%d %d %d %d %d %d %u %" PRIu64 " %d\n", i, p->pos.x, p->pos.y,
+            p->spawn.x, p->spawn.y, p->hp, p->deaths, p->rest, p->rank);
     }
     for (y = 0; y < g->size; ++y) {
         for (x = 0; x < g->size; ++x) {
@@ -30,14 +30,14 @@ int snapshot_write(const Game *g, int player, const char *path)
     return ok;
 }
 
-/* Read the public v2 format without retaining FILE ownership or any core pointer. */
+/* Read public v3 ranks; legacy v2 files have every player still racing. */
 int snapshot_read(FILE *file, Snapshot *s)
 {
     char magic[32], line[MAP_MAX * 2 + 4];
     int version, i, id, x, y;
     if (!file || !s) return 0;
     memset(s, 0, sizeof(*s));
-    if (fscanf(file, "%31s%d", magic, &version) != 2 || strcmp(magic, "FGC_STATE") || version != 2) return 0;
+    if (fscanf(file, "%31s%d", magic, &version) != 2 || strcmp(magic, "FGC_STATE") || (version != 2 && version != 3)) return 0;
     if (fscanf(file, "%d%d%d%d%d%d%d%d%d%d", &s->size, &s->turn, &s->self, &s->key_owner,
         &s->key.x, &s->key.y, &s->key_start.x, &s->key_start.y, &s->exit.x, &s->exit.y) != 10) return 0;
     if (s->size < 3 || s->size > MAP_MAX || s->self < 0 || s->self >= PLAYER_COUNT ||
@@ -46,6 +46,8 @@ int snapshot_read(FILE *file, Snapshot *s)
         PlayerState *p = &s->players[i];
         if (fscanf(file, "%d%d%d%d%d%d%u%" SCNu64, &id, &p->pos.x, &p->pos.y,
             &p->spawn.x, &p->spawn.y, &p->hp, &p->deaths, &p->rest) != 8 || id != i) return 0;
+        if (version == 3 && (fscanf(file, "%d", &p->rank) != 1 || p->rank < 0 || p->rank > PLAYER_COUNT)) return 0;
+        if (p->rank && (p->hp != 0 || p->rest != 0)) return 0;
         if (p->pos.x < 0 || p->pos.y < 0 || p->pos.x >= s->size || p->pos.y >= s->size || p->hp < 0 || p->hp > MAX_HP) return 0;
     }
     if (!fgets(line, sizeof(line), file)) return 0; /* Numeric record's newline. */

@@ -7,6 +7,15 @@ static int fail(char *error, size_t capacity, const char *message)
     return 0;
 }
 
+/* Keep all participants tied: a draw must not manufacture first-through-sixth ranks. */
+void game_check_no_escape(Game *g)
+{
+    if (!g->game_over && g->finished_count == 0 && g->turn >= 1000) {
+        g->draw = 1;
+        g->game_over = 1;
+    }
+}
+
 /* Coordinates always refer to logical cells, never console character offsets. */
 static int inside(const Game *g, Position p)
 {
@@ -26,6 +35,7 @@ int game_load(Game *g, FILE *file, char *error, size_t capacity)
     int head = 0, tail = 0;
     memset(g, 0, sizeof(*g));
     g->key_owner = g->winner = -1;
+    g->last_escape = -1;
     while (fgets(line, sizeof(line), file)) {
         size_t length = strlen(line);
         /* Text editors may add a UTF-8 BOM. It is file metadata, not a map cell. */
@@ -93,12 +103,14 @@ void game_begin_turn(Game *g)
 {
     int i, j;
     ++g->turn;
+    g->last_escape = -1;
     memset(g->attack, 0, sizeof(g->attack));
     memset(g->damaged, 0, sizeof(g->damaged));
     memset(g->cancelled, 0, sizeof(g->cancelled));
     for (i = 0; i < PLAYER_COUNT; ++i) {
         PlayerState *p = &g->players[i];
         g->last[i] = (Command)-1;
+        if (p->rank) continue; /* Finished players never respawn. */
         if (p->hp > 0) continue;
         if (p->rest) { --p->rest; continue; }
         for (j = 0; j < PLAYER_COUNT; ++j)
@@ -116,11 +128,12 @@ void game_resolve(Game *g, const Command commands[PLAYER_COUNT])
     Position start[PLAYER_COUNT], target[PLAYER_COUNT];
     int active[PLAYER_COUNT], kind[PLAYER_COUNT], valid[PLAYER_COUNT];
     int i, j, k, changed;
-    if (g->winner >= 0) return;
+    if (g->game_over) return;
+    g->last_escape = -1;
     for (i = 0; i < PLAYER_COUNT; ++i) {
         int command = (int)commands[i];
         start[i] = target[i] = g->players[i].pos;
-        active[i] = g->players[i].hp > 0;
+        active[i] = g->players[i].hp > 0 && !g->players[i].rank;
         valid[i] = active[i];
         kind[i] = -1;
         g->last[i] = commands[i];
@@ -197,6 +210,30 @@ void game_resolve(Game *g, const Command commands[PLAYER_COUNT])
             g->key = same(p->pos, g->exit) ? g->key_start : p->pos;
         }
     }
-    if (g->key_owner >= 0 && g->players[g->key_owner].hp > 0 && same(g->players[g->key_owner].pos, g->exit))
-        g->winner = g->key_owner;
+    if (g->key_owner >= 0 && g->players[g->key_owner].hp > 0 && same(g->players[g->key_owner].pos, g->exit)) {
+        int escaped = g->key_owner;
+        int place = g->finished_count++;
+        PlayerState *p = &g->players[escaped];
+        if (g->winner < 0) g->winner = escaped;
+        g->finish_order[place] = escaped;
+        g->finish_turn[place] = g->turn;
+        g->last_escape = escaped;
+        p->rank = place + 1;
+        p->hp = 0; p->rest = 0; /* Absent from AI occupancy and combat. */
+        g->key_owner = -1;
+        g->key = g->key_start;
+        /* The last participant is sixth even if temporarily dead/awaiting respawn. */
+        if (g->finished_count == PLAYER_COUNT - 1) {
+            for (i = 0; i < PLAYER_COUNT; ++i) {
+                if (g->players[i].rank) continue;
+                g->players[i].rank = PLAYER_COUNT;
+                g->players[i].hp = 0; g->players[i].rest = 0;
+                g->finish_order[g->finished_count] = i;
+                g->finish_turn[g->finished_count++] = -1;
+                break;
+            }
+            g->game_over = 1;
+        }
+    }
+    game_check_no_escape(g);
 }

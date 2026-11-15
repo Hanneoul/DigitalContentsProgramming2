@@ -26,6 +26,7 @@ typedef struct PlayerState {
     int hp;
     unsigned int deaths;
     uint64_t rest;
+    int rank; /* 0: still racing (including respawn); 1..5: escaped; 6: last. */
 } PlayerState;
 
 /* Public, file-only information; no pointer to the live core is exposed to AI. */

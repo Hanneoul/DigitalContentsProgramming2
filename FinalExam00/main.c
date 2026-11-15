@@ -24,7 +24,7 @@ int main(int argc, char **argv)
     const char *map_path;
     char *slash;
     DWORD length;
-    int i, max_turns = 200, delay = 1000, plain = 0, automatic = 0, result = 0;
+    int i, max_turns = 0, delay = 1000, plain = 0, automatic = 0, result = 0;
     if ((argc == 5 || argc == 6) && strcmp(argv[1], "--worker") == 0) {
         int player;
         if (!number(argv[2], 0, PLAYER_COUNT - 1, &player)) return 90;
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         if (!input_wait_start()) { puts("START CANCELLED: EOF"); return diagnostics_end() ? 1 : 0; }
     }
     result = 0;
-    while (game.turn < max_turns && game.winner < 0) {
+    while (!game.game_over && (!max_turns || game.turn < max_turns)) {
         ULONGLONG turn_started = GetTickCount64();
         Command commands[PLAYER_COUNT];
         int attacks = 0;
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
             if (!snapshot_write(&game, i, snapshots[i])) { fputs("Snapshot write failed.\n", stderr); result = 1; goto done; }
         }
         for (i = 0; i < PLAYER_COUNT; ++i) {
-            if (game.players[i].hp <= 0) continue;
+            if (game.players[i].hp <= 0 || game.players[i].rank) continue;
             snprintf(log_path, sizeof(log_path), "%s\\player%d_diagnostics.log", run_dir, i);
             commands[i] = worker_command(i, snapshots[i], log_path);
         }
@@ -95,9 +95,22 @@ int main(int argc, char **argv)
             if (elapsed < (ULONGLONG)delay) Sleep((DWORD)((ULONGLONG)delay - elapsed));
         }
     }
-    display_game(&game, "경기 종료", 0);
-    if (game.winner >= 0) printf("WINNER: P%d - 탈출 성공! P%d 플레이어가 이겼습니다.\n", game.winner, game.winner);
-    else puts("DRAW: 최대 턴에 도달했습니다.");
+    display_game(&game, game.draw ? "GAME OVER - 1000턴 탈출자 없음: 전원 무승부" : game.game_over ? "GAME OVER - 최종 순위 확정" : "턴 제한으로 중단 - 순위 미확정", 0);
+    if (game.game_over) {
+        char rank_path[MAX_PATH];
+        int saved;
+        puts("GAME OVER");
+        if (game.draw) {
+            puts("DRAW: 1000턴까지 탈출자가 없어 남은 전원 공동 무승부입니다.");
+            for (i = 0; i < PLAYER_COUNT; ++i) if (!game.players[i].rank) printf("DRAW: P%d\n", i);
+        }
+        for (i = 0; i < game.finished_count; ++i)
+            printf("RANK %d: P%d%s\n", i + 1, game.finish_order[i], i == PLAYER_COUNT - 1 ? " (LAST)" : " (ESCAPED)");
+        saved = rank_save(&game, base, rank_path, sizeof(rank_path));
+        if (saved == 1) printf("순위 저장: %s\n", rank_path);
+        else if (saved == 0) puts("파일 부족: rank00.txt~rank99.txt가 모두 존재합니다. 저장하지 않습니다.");
+        else { fputs("순위 파일 저장 오류\n", stderr); result = 1; }
+    } else puts("STOPPED: 최대 턴에 도달했습니다. 미확정 순위는 저장하지 않습니다.");
 done:
     printf("Snapshots / diagnostics: %s\n", run_dir);
     if (diagnostics_end()) result = 1;
