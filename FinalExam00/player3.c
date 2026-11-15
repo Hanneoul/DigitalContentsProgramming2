@@ -1,39 +1,80 @@
-#include "player_api.h"
+﻿#include "player_api.h"
 
-/* Simple example only: pick up an adjacent key, attack an adjacent opponent,
-   otherwise try a rotated direction. Improve this ONE function for your team. */
+/* HUNTER: chase the nearest reachable opponent and attack its three-cell fan.
+   Each call reads only this turn's file. BFS avoids walls, locked exits and live
+   occupants. No persistent/global memory or access to another player's code. */
 Command player3_choose_command(const char *state_path)
 {
     Snapshot s;
     FILE *file = fopen(state_path, "r");
     const int dx[4] = {0, 0, -1, 1}, dy[4] = {-1, 1, 0, 0};
-    int d, i, j, x, y, ok;
-    if (!file) return COMMAND_UP;
+    Position queue[MAP_MAX * MAP_MAX];
+    int first[MAP_MAX][MAP_MAX], occupied[MAP_MAX][MAP_MAX] = {0};
+    int head = 0, tail = 0, x, y, i, d, ok, carrying;
+    Position me;
+    if (!file) return COMMAND_ATTACK_UP;
     ok = snapshot_read(file, &s);
-    fclose(file); /* Also close the file on malformed input. */
-    if (!ok) return COMMAND_UP;
-    for (d = 0; d < 4; ++d) {
-        x = s.players[s.self].pos.x + dx[d];
-        y = s.players[s.self].pos.y + dy[d];
-        if (s.key_owner == -1 && x == s.key.x && y == s.key.y)
-            return (Command)(COMMAND_PICK_UP + d);
+    fclose(file);
+    if (!ok) return COMMAND_ATTACK_UP;
+    me = s.players[s.self].pos;
+    carrying = s.key_owner == s.self;
+    for (y = 0; y < s.size; ++y)
+        for (x = 0; x < s.size; ++x) first[y][x] = -2;
+    for (i = 0; i < PLAYER_COUNT; ++i)
+        if (i != s.self && s.players[i].hp > 0)
+            occupied[s.players[i].pos.y][s.players[i].pos.x] = 1;
+    /* Hunters do not seek keys. If given one, discard it before fighting. */
+    if (carrying) {
+        for (d = 0; d < 4; ++d) {
+            x = me.x + dx[d]; y = me.y + dy[d];
+            if (x >= 0 && y >= 0 && x < s.size && y < s.size && !occupied[y][x] && s.terrain[y][x] == ' ')
+                return (Command)(COMMAND_DROP_UP + d);
+        }
+        return COMMAND_UP;
     }
-    /* Only consider combat after checking every direction for a key. */
-    for (d = 0; d < 4; ++d) {
-        x = s.players[s.self].pos.x + dx[d];
-        y = s.players[s.self].pos.y + dy[d];
-        for (j = 0; j < PLAYER_COUNT; ++j)
-            if (j != s.self && s.players[j].hp > 0 && s.players[j].pos.x == x && s.players[j].pos.y == y)
-                return (Command)(COMMAND_ATTACK_UP + d);
+    queue[tail++] = me;
+    first[me.y][me.x] = -1;
+    /* BFS visits candidate action positions in increasing walking distance. */
+    while (head < tail) {
+        Position at = queue[head++];
+        int action = -1;
+        /* A target is in range if it is one cardinal/diagonal cell away.
+           For diagonals, a vertical attack fan includes that cell. */
+        for (i = 0; i < PLAYER_COUNT; ++i) {
+            int ax, ay;
+            if (i == s.self || s.players[i].hp <= 0) continue;
+            
+            ax = s.players[i].pos.x - at.x;
+            ay = s.players[i].pos.y - at.y;
+            if (abs(ax) <= 1 && abs(ay) <= 1 && (ax || ay)) {
+                action = ay < 0 ? COMMAND_ATTACK_UP : ay > 0 ? COMMAND_ATTACK_DOWN :
+                    ax < 0 ? COMMAND_ATTACK_LEFT : COMMAND_ATTACK_RIGHT;
+                break;
+            }
+        }
+        if (action >= 0) {
+            if (first[at.y][at.x] >= 0) return (Command)first[at.y][at.x];
+            return (Command)action;
+        }
+        for (i = 0; i < 4; ++i) {
+            /* Rotate equal-length choices without random/global state. */
+            d = (i + s.turn + s.self) % 4;
+            x = at.x + dx[d]; y = at.y + dy[d];
+            if (x < 0 || y < 0 || x >= s.size || y >= s.size || first[y][x] != -2 || occupied[y][x]) continue;
+            if (s.terrain[y][x] == '#' || (s.terrain[y][x] == 'E' && !carrying)) continue;
+            first[y][x] = first[at.y][at.x] < 0 ? d : first[at.y][at.x];
+            queue[tail].x = x; queue[tail++].y = y;
+        }
     }
-    /* No pathfinding: demonstrate loops, arrays, bounds and enum return values. */
-    for (i = 0; i < 4; ++i) {
-        d = (s.turn + s.self + i) % 4;
-        x = s.players[s.self].pos.x + dx[d];
-        y = s.players[s.self].pos.y + dy[d];
-        if (x < 0 || y < 0 || x >= s.size || y >= s.size || s.terrain[y][x] == '#') continue;
-        if (s.terrain[y][x] == 'E' && s.key_owner != s.self) continue;
-        return (Command)d;
+    /* No WAIT command exists in this core. Never issue a forbidden attack with
+       a key: put it on an empty adjacent floor if completely trapped. */
+    if (carrying) {
+        for (d = 0; d < 4; ++d) {
+            x = me.x + dx[d]; y = me.y + dy[d];
+            if (x >= 0 && y >= 0 && x < s.size && y < s.size && !occupied[y][x] && s.terrain[y][x] == ' ')
+                return (Command)(COMMAND_DROP_UP + d);
+        }
+        return COMMAND_UP; /* Completely blocked: no legal non-damaging command. */
     }
-    return COMMAND_ATTACK_UP; /* Empty-space attack is legal when surrounded. */
+    return COMMAND_ATTACK_UP; /* Legal empty-space attack if no target is reachable. */
 }

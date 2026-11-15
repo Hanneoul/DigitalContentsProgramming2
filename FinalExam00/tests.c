@@ -222,11 +222,56 @@ static void test_carrier_attack_penalty(void)
     CHECK(g.players[0].hp == 1 && g.players[1].hp == 2);
 }
 
+/* Exercise the real isolated worker dispatch, not a second copy of AI logic. */
+static Command role_command(Game *g, int id)
+{
+    char directory[MAX_PATH], path[MAX_PATH], log[MAX_PATH];
+    Command result = (Command)-1;
+    if (!GetTempPathA(sizeof(directory), directory) ||
+        !GetTempFileNameA(directory, "fra", 0, path)) { CHECK(0); return result; }
+    if (!GetTempFileNameA(directory, "frl", 0, log)) { DeleteFileA(path); CHECK(0); return result; }
+    if (snapshot_write(g, id, path)) result = worker_command(id, path, log);
+    else CHECK(0);
+    DeleteFileA(path); DeleteFileA(log);
+    return result;
+}
+
+/* Runner pursues objective through a detour; hunters pursue/attack reachable rivals. */
+static void test_role_ai(void)
+{
+    Game g;
+    Command c[PLAYER_COUNT];
+    int hunter;
+    arena(&g, c); place(&g, 0, 1, 1, 2);
+    g.key.x = 2; g.key.y = 1;
+    CHECK(role_command(&g, 0) == COMMAND_PICK_RIGHT);
+    g.key_owner = 0; g.exit.x = 2; g.exit.y = 1; g.terrain[1][2] = 'E';
+    CHECK(role_command(&g, 0) == COMMAND_RIGHT);
+    arena(&g, c); place(&g, 0, 1, 1, 2);
+    g.key.x = 4; g.key.y = 1;
+    memset(g.terrain[0], '#', 7); g.terrain[1][2] = '#';
+    CHECK(role_command(&g, 0) == COMMAND_DOWN);
+    g.key_owner = 0; g.exit.x = 4; g.exit.y = 1; g.terrain[1][4] = 'E';
+    CHECK(role_command(&g, 0) == COMMAND_DOWN);
+    for (hunter = 1; hunter <= 3; hunter += 2) {
+        arena(&g, c); place(&g, hunter, 1, 1, 2); place(&g, 0, 2, 1, 2);
+        CHECK(role_command(&g, hunter) == COMMAND_ATTACK_RIGHT);
+        g.players[0].pos.y = 2;
+        CHECK(role_command(&g, hunter) == COMMAND_ATTACK_DOWN);
+        g.players[0].pos.x = 4; g.players[0].pos.y = 1;
+        memset(g.terrain[0], '#', 7); g.terrain[1][2] = '#';
+        CHECK(role_command(&g, hunter) == COMMAND_DOWN);
+        arena(&g, c); place(&g, hunter, 3, 3, 2); g.key_owner = hunter;
+        CHECK(role_command(&g, hunter) == COMMAND_DROP_UP);
+    }
+}
+
 /* Instructor regression entry point; normal gameplay never executes test fixtures. */
 int self_test(void)
 {
     test_collisions(); test_attacks(); test_items(); test_respawn(); test_files();
     test_carrier_attack_penalty();
+    test_role_ai();
     printf("Self-test: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

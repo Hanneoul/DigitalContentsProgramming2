@@ -63,15 +63,14 @@ int main(int argc, char **argv)
     display_init(plain);
     if (!automatic) {
         input_init();
-        display_game(&game, "Press 's' Key", 0);
         if (!input_wait_start()) { puts("START CANCELLED: EOF"); return diagnostics_end() ? 1 : 0; }
     }
     result = 0;
     while (game.turn < max_turns && game.winner < 0) {
+        ULONGLONG turn_started = GetTickCount64();
         Command commands[PLAYER_COUNT];
         int attacks = 0;
         game_begin_turn(&game);
-        display_game(&game, "같은 상태에서 모든 명령을 수집한 뒤 동시에 처리합니다.", 0);
         /* Write EVERY snapshot before executing ANY submitted code or updating state. */
         for (i = 0; i < PLAYER_COUNT; ++i) {
             commands[i] = (Command)-1;
@@ -87,14 +86,15 @@ int main(int argc, char **argv)
         for (i = 0; i < PLAYER_COUNT; ++i)
             if (game.last[i] >= COMMAND_ATTACK_UP && game.last[i] <= COMMAND_ATTACK_RIGHT && !game.cancelled[i] &&
                 (game.players[i].hp > 0 || game.damaged[i])) attacks = 1;
-        /* One second total: attack overlay gets half, resolved state gets the rest. */
-        if (attacks) {
-            display_game(&game, "공격 범위 ** / 노란 배경, 피격 빨간 배경 / 사망 !!", 1);
-            if (delay) Sleep((DWORD)(delay / 2));
+        /* Draw once per turn, then wait ONCE. AI/file/render time is part of the
+           one-second budget; a slow/timed-out AI never adds another fixed pause. */
+        display_game(&game, attacks ? "동시 턴 완료: 공격 범위 ** / 피격 빨간 배경" : "동시 턴 판정 완료", attacks);
+        if (delay) {
+            ULONGLONG elapsed = GetTickCount64() - turn_started;
+            if (elapsed < (ULONGLONG)delay) Sleep((DWORD)((ULONGLONG)delay - elapsed));
         }
-        display_game(&game, "동시 턴 판정 완료", 0);
-        if (delay) Sleep((DWORD)(delay - (attacks ? delay / 2 : 0)));
     }
+    display_game(&game, "경기 종료", 0);
     if (game.winner >= 0) printf("WINNER: P%d - 탈출 성공! P%d 플레이어가 이겼습니다.\n", game.winner, game.winner);
     else puts("DRAW: 최대 턴에 도달했습니다.");
 done:
