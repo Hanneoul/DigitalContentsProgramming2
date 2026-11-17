@@ -1,57 +1,139 @@
+//Game Loop
 /*
-==============================================================================
- [강의 자료] Lecture11_01 | 게임 루프 | 한 칸씩 달리는 모험
-==============================================================================
+[ Game Loop 시작 ]
+          |
+          v
++-----------------------+
+|  1. 입력 (Input)      | <--- 키보드, 마우스, 조이스틱 신호 수집
++-----------------------+
+          |
+          v
++-----------------------+
+|  2. 업데이트 (Update) | <--- 캐릭터 이동, 충돌 체크, 점수 계산 (데이터 변경)
++-----------------------+
+          |
+          v
++-----------------------+
+|  3. 렌더링 (Render)   | <--- 변경된 데이터를 화면에 그리기 (printf, 그래픽 출력)
++-----------------------+
+          |
+          v
+ [ 종료 조건 검사? (ESC) ] --- 아니오 ---> (다시 입력 단계로 이동)
+          |
+         예
+          |
+          v
+  [ Game Loop 종료 ]
 
-1. 같은 게임을 한 겹씩 확장한다
-    01: 입력 → 이동 → 화면
-    02: GameObject + Start / Update / Destroy
-    03: 객체 하나 → 고정 배열 Pool
-    04: 도착 사실 → OnGoal 이벤트 → 점수
-    이전 프로젝트를 복사한 뒤 [추가] 부분을 붙인다. 각 완성본은 독립 실행된다.
-    표시용 panel, track과 입력용 command는 제공 코드(console.h)이다.
+ * =========================================================================
+ * [학습 주제: 게임 개발의 심장, '게임 루프(Game Loop)']
+ * =========================================================================
+ * 1. 게임 루프란?
+ * - 사용자의 입력이 없어도 멈추지 않고 실시간으로 돌아가는 무한 반복문.
+ * - 일반 프로그램이 '대기(Wait)' 중심이라면, 게임은 '흐름(Flow)' 중심임.
+ *
+ * 2. 게임 루프의 3대 핵심 구조 (The Big Three)
+ * 1) 입력(Input): 사용자가 무엇을 눌렀는지 확인 (키보드, 마우스 등)
+ * 2) 업데이트(Update): 캐릭터 이동, 충돌, 점수 등 게임 내 세상의 수치를 계산
+ * 3) 렌더링(Render): 계산된 수치를 바탕으로 화면을 새로 그림 (printf, Draw)
+ *
+ * 3. 왜 이렇게 짜야 하는가? (구조화의 필요성)
+ * - 코드가 섞이면 나중에 복잡한 게임을 만들 때 수정이 불가능해짐.
+ * - "듣고(Input), 생각하고(Update), 말하기(Render)"를 분리하는 것이 핵심.
+ *
+ * [텍스트 구조 다이어그램]
+ * While(게임이 실행 중인가?) {
+ * [입력] -> 키 입력을 변수에 저장
+ * [처리] -> 변수값 계산 (x = x + 1 등)
+ * [출력] -> 화면 지우기 후 새로운 위치에 출력
+ * }
+ * =========================================================================
+ */
 
- 2. 게임 루프의 세 박자
-       Input(입력) ---> Update(상태 변경) ---> Render(그리기)
-           ^                                      |
-           +--------------------------------------+
-    Loop는 고리, Frame은 한 장의 화면이다. 한 바퀴에 상태를 한 번 바꾼다.
-    이 수업은 Enter로 한 틱씩 진행하는 턴 방식이다. Tick은 시계의 한 눈금이다.
-    실시간 게임은 입력을 기다리지 않고 반복하며 경과 시간도 고려해야 한다.
-    아래 코드는 실시간 프레임 속도나 delta time(경과 시간)을 구현하지 않는다.
-    Enter=진행, q=종료. 입력 파일 끝(EOF)도 종료로 처리한다.
+#include <stdio.h>
+#include <Windows.h>
 
- 3. 오늘 추가할 코드는 세 줄
-    위치 x, 이동 ++x, 출력 track(x, 1)을 연결한다.
-    렌더링(Render)은 상태를 화면으로 표현하는 작업이다. 그릴 때 위치를 바꾸지 않는다.
-    실험: ++x를 x += 2로 바꾸려면 도착 조건도 >=로 바꾸고 11로 제한해야 한다.
-    확인: Enter 3번 뒤 x=3, 11번 뒤 CLEAR이다. q는 이동 없이 끝낸다.
+#define GAMESTATE_QUIT -1
+#define GAMESTATE_START 0
+#define GAMESTATE_TITLE 1
+#define GAMESTATE_TITLE_ENTER 2
+#define GAMESTATE_TITLE_EXIT 3
 
-==============================================================================
- [실습 코드] 먼저 실행 → 예측 → 추가 부분 작성 → 다시 실행
-==============================================================================
-*/
+ //함수 미리 정의
+int ProcessInput();
+int Update();
+int Render();
 
-#include "../LectureSupport/console.h" // 제공된 입력과 화면 도구이다.
+/*
+ * -1: 게임종료
+ * 0 : 게임 시작
+ * 1 : 게임 타이틀 화면
+ * 2 : 게임 타이틀 화면으로 전환
+ * 3 : 게임 타이틀 화면에서 탈출
+ */
+int gameState = 0;
 
-int main(void) // 게임 실행의 출발점이다.
-{ // main 시작.
-    int x = 0; // 주인공의 가로 위치이다.
-    int tick = 0; // 지나간 논리 틱 수이다.
-    panel("11-01 | RUN TO THE GATE"); // 게임 제목이다.
-    track(x, 1); // 입력 전에 시작 위치를 보여 준다.
-    puts("  Enter: step | q: quit | Goal: reach cell 11"); // 조작법이다.
-    for (;;) // [유지] Input -> Update -> Render의 반복이다.
-    { // 한 틱 시작.
-        int key = command(); // Input: 첫 문자와 나머지 한 줄을 읽는다.
-        if (key == 'q' || key == EOF) break; // 종료 명령이면 갱신하지 않는다.
-        if (key != '\n') continue; // Enter 외에는 게임을 진행하지 않는다.
-        ++tick; // Update: 논리 시간이 한 틱 흐른다.
-        if (x < 11) ++x; // Update: 화면 밖으로 나가지 않도록 이동한다.
-        printf("  TICK %02d | POSITION %02d\n", tick, x); // Render: 상태 표시이다.
-        track(x, 1); // Render: 새 위치를 그린다.
-        if (x == 11) break; // 도착하면 이번 게임을 끝낸다.
-    } // 루프 끝.
-    puts(x == 11 ? "  CLEAR! Gate reached." : "  Run ended."); // 결과를 표시한다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+int main()
+{
+    SetConsoleOutputCP(65001);
+    gameState = 0;
+    while (gameState != GAMESTATE_QUIT)
+    {
+        ProcessInput();
+        Update();
+        Render();
+        Sleep(300);
+    }
+    return 0;
+}
+
+int ProcessInput()
+{
+    if (gameState == GAMESTATE_TITLE)
+    {
+        int input = getch();
+        if (input == 27)		//esc
+        {
+            gameState = GAMESTATE_TITLE_EXIT;
+        }
+    }
+    return 0;
+}
+
+int Update()
+{
+    if (gameState == GAMESTATE_START)
+    {
+        gameState = GAMESTATE_TITLE_ENTER;
+    }
+
+    return 0;
+}
+
+int Render()
+{
+    if (gameState == GAMESTATE_TITLE_ENTER)
+    {
+        system("cls");
+        puts("             타이틀 화면이다!!!! \n");
+        puts("     ESC 키를 누르면 게임이 종료됩니다. \n");
+        gameState = GAMESTATE_TITLE;
+    }
+    if (gameState == GAMESTATE_TITLE)
+    {
+        printf("\n입력을 하세요(ESC키!)>");
+
+    }
+    if (gameState == GAMESTATE_TITLE_EXIT)
+    {
+        printf(" 타이틀 화면에서 떠납니다.");
+        gameState = GAMESTATE_QUIT;
+    }
+    if (gameState == GAMESTATE_QUIT)
+    {
+        printf("\n\n 게임을 종료합니다.");
+
+    }
+
+    return 0;
+}

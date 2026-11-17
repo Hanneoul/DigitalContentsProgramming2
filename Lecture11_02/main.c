@@ -56,19 +56,29 @@ void Destroy(GameObject *object) // [추가] 게임 참여를 끝낸다.
 } // Destroy 끝.
 
 void Update(GameObject *object) // [변경] 변수 대신 객체의 주소를 받는다.
-{ // Update 시작.
-    if (!object->active) return; // 비활성 객체는 움직이지 않는다.
+{
+    // Update 시작.
+    if (!object->active) 
+        return; // 비활성 객체는 움직이지 않는다.
+    
     ++object->x; // ->는 포인터가 가리키는 구조체의 필드에 접근한다.
-    if (object->x >= 11) Destroy(object); // 도착한 객체를 비활성화한다.
-} // Update 끝.
+    
+    if (object->x >= 11) 
+        Destroy(object); // 도착한 객체를 비활성화한다.
+    // Update 끝.
+} 
 
 int main(void) // 같은 게임 루프를 유지한다.
-{ // main 시작.
+{ 
+    // main 시작.
     GameObject hero = {0, 0}; // [변경] 위치와 활성 여부를 한 객체에 묶는다.
+    
     Start(&hero); // &는 주소이다. 시작 함수가 원본을 수정한다.
     panel("11-02 | GAME OBJECT / LIFECYCLE"); // 제목이다.
+    
     track(hero.x, hero.active); // .은 실제 구조체의 필드 접근이다.
     puts("  Enter: step | q: quit"); // 조작법이다.
+    
     while (hero.active) // 활성 상태인 동안 게임을 진행한다.
     { // 한 틱 시작.
         int key = command(); // Input이다.
@@ -77,7 +87,9 @@ int main(void) // 같은 게임 루프를 유지한다.
         Update(&hero); // Update: 원본 객체를 이동시킨다.
         track(hero.x, hero.active); // Render: 비활성이면 경로에서 사라진다.
     } // 루프 끝.
+    
     puts(hero.x >= 11 ? "  CLEAR! Destroy -> inactive" : "  Run ended."); // 결과이다.
     Destroy(&hero); // 중도 종료 시에도 참여를 끝낸다.
+    
     return 0; // 정상 종료이다.
 } // main 끝.
