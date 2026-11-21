@@ -23,7 +23,6 @@ void input_init(void)
 int input_wait_start(void)
 {
     int ch;
-    //puts("Press 's' Key");
     fflush(stdout);
     while ((ch = getchar()) != EOF) {
         if (tolower((unsigned char)ch) == 's') { input_restore(); return 1; }

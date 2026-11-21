@@ -14,6 +14,13 @@ static int number(const char *text, int minimum, int maximum, int *result)
     return 1;
 }
 
+/* Wait only for the unspent frame budget; slow AI must not add a fixed sleep. */
+unsigned int frame_wait_ms(uint64_t previous_output, uint64_t now, unsigned int interval)
+{
+    uint64_t elapsed = now - previous_output;
+    return elapsed < interval ? interval - (unsigned int)elapsed : 0;
+}
+
 /* The parent owns the game. Worker mode executes only one submitted AI function. */
 int main(int argc, char **argv)
 {
@@ -24,7 +31,8 @@ int main(int argc, char **argv)
     const char *map_path;
     char *slash;
     DWORD length;
-    int i, max_turns = 0, delay = 1000, plain = 0, automatic = 0, result = 0;
+    ULONGLONG previous_output;
+    int i, max_turns = 0, delay = 500, plain = 0, automatic = 0, result = 0;
     if ((argc == 5 || argc == 6) && strcmp(argv[1], "--worker") == 0) {
         int player;
         if (!number(argv[2], 0, PLAYER_COUNT - 1, &player)) return 90;
@@ -53,7 +61,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[i], "--map") == 0 && i + 1 < argc) map_path = argv[++i];
         else if ((!strcmp(argv[i], "--max-turns") || !strcmp(argv[i], "--max-rounds")) && i + 1 < argc && number(argv[i + 1], 1, 10000, &max_turns)) ++i;
         else {
-            fputs("Usage: FinalExam00 [--map path] [--auto] [--fast] [--plain] [--max-turns 1..10000] [--self-test]\n", stderr);
+            fputs("Usage: FinalExam01 [--map path] [--auto] [--fast] [--plain] [--max-turns 1..10000] [--self-test | --feature-test]\n", stderr);
             return 1;
         }
     }
@@ -71,9 +79,12 @@ int main(int argc, char **argv)
         if (!input_wait_start()) { puts("START CANCELLED: EOF"); return diagnostics_end() ? 1 : 0; }
     }
     result = 0;
+    previous_output = GetTickCount64();
+    display_game(&game, "게임 시작 | 기본 화면 갱신 간격 500ms", 0);
     while (!game.game_over && (!max_turns || game.turn < max_turns)) {
-        ULONGLONG turn_started = GetTickCount64();
         Command commands[PLAYER_COUNT];
+        const char *message;
+        unsigned int wait;
         int attacks = 0;
         game_begin_turn(&game);
         /* Write EVERY snapshot before executing ANY submitted code or updating state. */
@@ -91,15 +102,17 @@ int main(int argc, char **argv)
         for (i = 0; i < PLAYER_COUNT; ++i)
             if (game.last[i] >= COMMAND_ATTACK_UP && game.last[i] <= COMMAND_ATTACK_RIGHT && !game.cancelled[i] &&
                 (game.players[i].hp > 0 || game.damaged[i])) attacks = 1;
-        /* Draw once per turn, then wait ONCE. AI/file/render time is part of the
-           one-second budget; a slow/timed-out AI never adds another fixed pause. */
-        display_game(&game, attacks ? "동시 턴 완료: 공격 범위 ** / 피격 빨간 배경" : "동시 턴 판정 완료", attacks);
-        if (delay) {
-            ULONGLONG elapsed = GetTickCount64() - turn_started;
-            if (elapsed < (ULONGLONG)delay) Sleep((DWORD)((ULONGLONG)delay - elapsed));
-        }
+        message = game.draw ? "GAME OVER - 1000턴 탈출자 없음: 전원 무승부" :
+            game.game_over ? "GAME OVER - 최종 순위 확정" :
+            max_turns && game.turn >= max_turns ? "턴 제한으로 중단 - 순위 미확정" :
+            attacks ? "동시 턴 완료: 공격 범위 ** / 피격 빨간 배경" : "동시 턴 판정 완료";
+        /* Previous rendering, snapshots and ALL AI work consume the same budget.
+           Sleep BEFORE printf, then anchor the next frame to this actual output. */
+        wait = frame_wait_ms(previous_output, GetTickCount64(), (unsigned int)delay);
+        if (wait) Sleep((DWORD)wait);
+        previous_output = GetTickCount64();
+        display_game(&game, message, attacks);
     }
-    display_game(&game, game.draw ? "GAME OVER - 1000턴 탈출자 없음: 전원 무승부" : game.game_over ? "GAME OVER - 최종 순위 확정" : "턴 제한으로 중단 - 순위 미확정", 0);
     if (game.game_over) {
         char rank_path[MAX_PATH];
         int saved;

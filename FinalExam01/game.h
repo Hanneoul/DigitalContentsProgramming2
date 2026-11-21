@@ -39,4 +39,6 @@ int display_name(char *out, size_t capacity, const char *name, int columns);
 int display_gauge_fill(uint64_t remaining, uint64_t total, int width);
 int display_sidebar_fits(int map_size, int console_columns);
 int feature_test(void);
+unsigned int frame_wait_ms(uint64_t previous_output, uint64_t now, unsigned int interval);
+const char *display_player_style(int player, int hp, int carrier, int hit);
 #endif

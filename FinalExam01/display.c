@@ -4,8 +4,19 @@
 
 static int color;
 static const char *colors[PLAYER_COUNT] = {"\x1b[91m", "\x1b[92m", "\x1b[94m", "\x1b[95m", "\x1b[96m", "\x1b[97m"};
+static const char *dark_colors[PLAYER_COUNT] = {"\x1b[31m", "\x1b[32m", "\x1b[34m", "\x1b[35m", "\x1b[36m", "\x1b[37m"};
 /* Redirected output and --plain must not contain terminal escape codes. */
 static const char *esc(const char *sequence) { return color ? sequence : ""; }
+
+/* Keep special highlights readable; both their normal/bright variants reflect HP.
+   An attack fan colors empty cells, without hiding a player's own HP color. */
+const char *display_player_style(int player, int hp, int carrier, int hit)
+{
+    if (carrier) return hp >= MAX_HP ? "\x1b[103;30;1m" : "\x1b[43;30m";
+    if (hit) return hp >= MAX_HP ? "\x1b[101;97;1m" : "\x1b[41;37m";
+    if (player < 0 || player >= PLAYER_COUNT || hp <= 0) return "\x1b[90m";
+    return hp >= MAX_HP ? colors[player] : dark_colors[player];
+}
 
 /* Decode UTF-8, remove terminal controls and pad by screen cells, not byte length.
    Hangul/CJK occupy two cells. Other unusual glyphs use '?' to keep alignment. */
@@ -111,8 +122,8 @@ void display_init(int plain)
     color = !plain && GetConsoleMode(output, &mode) && SetConsoleMode(output, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
-/* Draw each logical cell using exactly two printable characters, plus zero-width ANSI.
-   The effect frame paints attack fans and hit players; the final frame clears effects. */
+/* One scheduled frame shows movement, attack fans and hits together. Effects last
+   until the next scheduled turn; there is no extra immediate effect-clearing frame. */
 void display_game(const Game *g, const char *message, int effects)
 {
     int y, x, i, side = display_sidebar_fits(g->size, console_width());
@@ -130,10 +141,8 @@ void display_game(const Game *g, const char *message, int effects)
             }
             if (g->terrain[y][x] == '#') printf("%s##%s", esc("\x1b[100;90m"), esc("\x1b[0m"));
             else if (occupant >= 0) {
-                /* Bright yellow / black keeps the carrier ID legible in every frame. */
-                const char *paint = g->key_owner == occupant ? "\x1b[103;30;1m" :
-                    effects && g->damaged[occupant] ? "\x1b[41;97;1m" :
-                    effects && g->attack[y][x] ? "\x1b[43;30m" : colors[occupant];
+                const char *paint = display_player_style(occupant, g->players[occupant].hp,
+                    g->key_owner == occupant, effects && g->damaged[occupant]);
                 printf("%s%c%d%s", esc(paint), 'P',
                     occupant, esc("\x1b[0m"));
             }
@@ -156,7 +165,7 @@ void display_game(const Game *g, const char *message, int effects)
     printf("%s%s%s\n", esc(g->last_escape >= 0 ? "\x1b[92m" : "\x1b[91m"),
         g->last_escape >= 0 ? "탈출 순위 기록! 열쇠는 최초 위치에 다시 생성됩니다." : "문이 잠겼습니다. 열쇠 소유자만 출입 가능합니다.", esc("\x1b[0m"));
     puts("P0~P5 자동 경쟁 | 이동 0~3 / 공격 4~7 / 집기 8~11 / 버리기 12~15 | Ctrl+C 종료");
-    puts("열쇠 소지자: 밝은 노란 배경 / 검은 글자 | 소지 중 공격 시 취소 및 HP -1");
+    puts("HP 2: 밝은 색 / HP 1: 어두운 색 | 열쇠: 노란 배경 | 소지 중 공격 시 취소 및 HP -1");
     /* Number columns grow together if late-game respawn/death counters grow. */
     for (i = 0; i < PLAYER_COUNT; ++i) {
         char number[32];
@@ -171,7 +180,7 @@ void display_game(const Game *g, const char *message, int effects)
         char name[PLAYER_NAME_BYTES];
         int hp;
         display_name(name, sizeof(name), player_name(i), 16);
-        printf("%sP%d %s%s HP ", esc(g->key_owner == i ? "\x1b[103;30;1m" : colors[i]), i, name, esc("\x1b[0m"));
+        printf("%sP%d %s%s HP ", esc(display_player_style(i, p->hp, g->key_owner == i, 0)), i, name, esc("\x1b[0m"));
         for (hp = 0; hp < MAX_HP; ++hp)
             printf("%s%s%s", esc(effects && g->damaged[i] ? "\x1b[41;97m" : hp < p->hp ? "\x1b[42;30m" : "\x1b[90m"), hp < p->hp ? "[#]" : "[ ]", esc("\x1b[0m"));
         printf(" R "); respawn_bar(p);

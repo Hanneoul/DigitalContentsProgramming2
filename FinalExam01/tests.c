@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include "game.h"
 
 static int failures;
@@ -151,12 +151,13 @@ static void test_respawn(void)
     game_begin_turn(&g); CHECK(g.players[0].hp == 2);
 }
 
-/* Check map errors and serialize a v2 snapshot through an actual isolated worker. */
+/* Validate maps/snapshots and all six worker contracts without prescribing AI strategy. */
 static void test_files(void)
 {
     Game g; Snapshot s;
     char path[MAX_PATH], directory[MAX_PATH], log_path[MAX_PATH], changed[sizeof(valid_map)];
     FILE *file;
+    int id;
     DWORD length = GetTempPathA(sizeof(directory), directory);
     CHECK(length > 0 && length < sizeof(directory));
     if (!length || length >= sizeof(directory)) return;
@@ -182,7 +183,12 @@ static void test_files(void)
     CHECK(snapshot_write(&g, 0, path));
     file = fopen(path, "r"); CHECK(file != NULL);
     if (file) { CHECK(snapshot_read(file, &s)); fclose(file); CHECK(s.turn == 13 && s.self == 0 && s.key.x == 2 && s.key.y == 1 && s.players[5].hp == 2); }
-    CHECK(worker_command(0, path, log_path) == COMMAND_PICK_RIGHT);
+    for (id = 0; id < PLAYER_COUNT; ++id) {
+        Command command;
+        CHECK(snapshot_write(&g, id, path));
+        command = worker_command(id, path, log_path);
+        CHECK((int)command >= 0 && command < COMMAND_COUNT);
+    }
     file = fopen(log_path, "r"); CHECK(file != NULL);
     if (file) { CHECK(fgetc(file) == EOF); fclose(file); }
     DeleteFileA(path); DeleteFileA(log_path);
@@ -220,46 +226,6 @@ static void test_carrier_attack_penalty(void)
     c[0] = c[1] = COMMAND_ATTACK_UP;
     game_resolve(&g, c);
     CHECK(g.players[0].hp == 1 && g.players[1].hp == 2);
-}
-
-/* Exercise the real isolated worker dispatch, not a second copy of AI logic. */
-static Command role_command(Game *g, int id)
-{
-    char directory[MAX_PATH], path[MAX_PATH], log[MAX_PATH];
-    Command result = (Command)-1;
-    if (!GetTempPathA(sizeof(directory), directory) ||
-        !GetTempFileNameA(directory, "fra", 0, path)) { CHECK(0); return result; }
-    if (!GetTempFileNameA(directory, "frl", 0, log)) { DeleteFileA(path); CHECK(0); return result; }
-    if (snapshot_write(g, id, path)) result = worker_command(id, path, log);
-    else CHECK(0);
-    DeleteFileA(path); DeleteFileA(log);
-    return result;
-}
-
-/* Every profile picks up the key and heads for exit, including prior hunters. */
-static void test_role_ai(void)
-{
-    Game g;
-    Command c[PLAYER_COUNT];
-    int id;
-    for (id = 0; id < PLAYER_COUNT; ++id) {
-        arena(&g, c); place(&g, id, 1, 1, 2);
-        g.key.x = 2; g.key.y = 1;
-        CHECK(role_command(&g, id) == COMMAND_PICK_RIGHT);
-        g.key_owner = id; g.exit.x = 2; g.exit.y = 1; g.terrain[1][2] = 'E';
-        CHECK(role_command(&g, id) == COMMAND_RIGHT);
-        arena(&g, c); place(&g, id, 1, 1, 2);
-        g.key_owner = id; g.exit.x = 4; g.exit.y = 1; g.terrain[1][4] = 'E';
-        memset(g.terrain[0], '#', 7); g.terrain[1][2] = '#';
-        CHECK(role_command(&g, id) == COMMAND_DOWN);
-    }
-    arena(&g, c); place(&g, 1, 1, 1, 2); place(&g, 0, 2, 1, 2);
-    CHECK(role_command(&g, 1) == COMMAND_ATTACK_RIGHT);
-    g.players[0].pos.y = 2;
-    CHECK(role_command(&g, 1) == COMMAND_ATTACK_DOWN);
-    /* Adjacent key beats combat for an attacker too. */
-    g.key.x = 2; g.key.y = 1;
-    CHECK(role_command(&g, 1) == COMMAND_PICK_RIGHT);
 }
 
 /* Boundaries and exact semantics: one escape disables the no-escape cutoff. */
@@ -377,7 +343,7 @@ int self_test(void)
 {
     test_collisions(); test_attacks(); test_items(); test_respawn(); test_files();
     test_carrier_attack_penalty();
-    test_role_ai();
+    failures += feature_test();
     test_escape_ranking(); test_rank_files(); test_no_escape_draw();
     printf("Self-test: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;

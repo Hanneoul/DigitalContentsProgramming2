@@ -54,6 +54,19 @@ int feature_test(void)
     char name[PLAYER_NAME_BYTES];
     int i;
     failures = 0;
+    /* 100ms work => 400ms sleep, deadline/overrun => no sleep; --fast bypasses it. */
+    VERIFY(frame_wait_ms(1000, 1100, 500) == 400);
+    VERIFY(frame_wait_ms(1000, 1499, 500) == 1);
+    VERIFY(frame_wait_ms(1000, 1500, 500) == 0);
+    VERIFY(frame_wait_ms(1000, 1800, 500) == 0);
+    VERIFY(frame_wait_ms(1800, 1900, 500) == 400);
+    VERIFY(frame_wait_ms(1000, 1000, 0) == 0);
+    VERIFY(!strcmp(display_player_style(0, 2, 0, 0), "\x1b[91m"));
+    VERIFY(!strcmp(display_player_style(0, 1, 0, 0), "\x1b[31m"));
+    VERIFY(!strcmp(display_player_style(0, 1, 1, 0), "\x1b[43;30m"));
+    VERIFY(!strcmp(display_player_style(0, 2, 1, 0), "\x1b[103;30;1m"));
+    for (i = 0; i < PLAYER_COUNT; ++i)
+        VERIFY(strcmp(display_player_style(i, 1, 0, 0), display_player_style(i, 2, 0, 0)) != 0);
     setup(&g, c);
     for (i = 0; i < 29; ++i) game_resolve(&g, c);
     VERIFY(game_key_remaining(&g) == 1 && g.key.x == 2);

@@ -10,7 +10,7 @@ int rank_save(const Game *g, const char *directory, char *path, size_t capacity)
     HANDLE file;
     if (!g->game_over || (!g->draw && g->finished_count != PLAYER_COUNT) || !capacity) return -1;
     path[0] = '\0';
-    length = snprintf(text, sizeof(text), "FinalExam00 - FINAL RANKING\r\nTurns: %d\r\n\r\n", g->turn);
+    length = snprintf(text, sizeof(text), "FinalExam01 - FINAL RANKING\r\nTurns: %d\r\n\r\n", g->turn);
     if (g->draw) length += snprintf(text + length, sizeof(text) - (size_t)length, "DRAW - no escape within 1000 turns\r\n");
     for (i = 0; i < PLAYER_COUNT; ++i) {
         if (g->draw) {

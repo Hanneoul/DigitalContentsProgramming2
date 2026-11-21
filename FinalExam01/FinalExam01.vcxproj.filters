@@ -64,9 +64,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="sample_ai.h">
-      <Filter>Players</Filter>
-    </ClInclude>
     <ClInclude Include="game.h">
       <Filter>Core</Filter>
     </ClInclude>

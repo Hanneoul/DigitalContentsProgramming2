@@ -41,7 +41,6 @@
     <ClInclude Include="diagnostics.h" />
     <ClInclude Include="game.h" />
     <ClInclude Include="player_api.h" />
-    <ClInclude Include="sample_ai.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dungeonmap.dat" />
