@@ -1,30 +1,91 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="리소스 파일">
+    <Filter Include="Core">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Documents">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Players">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="player5.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="player0.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="player1.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="player2.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="player3.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="player4.c">
+      <Filter>Players</Filter>
+    </ClCompile>
+    <ClCompile Include="game.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="input.c">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="main.c">
-      <Filter>소스 파일</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Logger.c">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="runner.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="player_names.c"><Filter>Core</Filter></ClCompile>
+    <ClCompile Include="feature_tests.c"><Filter>Core</Filter></ClCompile>
+    <ClCompile Include="ranking.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="snapshot.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="tests.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="diagnostics.c">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="display.c">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Logger.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="sample_ai.h">
+      <Filter>Players</Filter>
     </ClInclude>
+    <ClInclude Include="game.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="player_api.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="diagnostics.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="dungeonmap.dat">
+      <Filter>Documents</Filter>
+    </None>
+    <None Include="dungeonmap_13x13.dat"><Filter>Documents</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Rule.txt">
+      <Filter>Documents</Filter>
+    </Text>
   </ItemGroup>
 </Project>

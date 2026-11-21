@@ -39,7 +39,7 @@
 #include "../LectureSupport/console.h" // 화면과 입력이다.
 
 typedef struct // [추가] struct는 서로 관련된 값의 구조를 정의한다.
-{ // GameObject의 필드 시작.
+{
     int x; // 위치이다.
     int active; // 활성 여부: 1이면 게임에 참여한다.
 } GameObject; // typedef로 자료형에 짧은 이름을 붙인다.
@@ -65,7 +65,8 @@ void OnGoal(GameObject *object) // [추가] 도착 사건에 대한 게임의 �
 
 void Update(GameObject *object) // [변경] 변수 대신 객체의 주소를 받는다.
 { // Update 시작.
-    if (!object->active) return; // 비활성 객체는 움직이지 않는다.
+    if (!object->active)
+        return; // 비활성 객체는 움직이지 않는다.
     ++object->x; // ->는 포인터가 가리키는 구조체의 필드에 접근한다.
     if (object->x >= 11) // [변경] 도착 사건을 발견한다.
     { // 도착 처리 시작.
@@ -81,8 +82,10 @@ void Spawn(void) // [추가] 빈자리를 찾아 재사용한다.
 { // Spawn 시작.
     for (int i = 0; i < CAPACITY; ++i) // 배열의 모든 칸을 순서대로 검사한다.
     { // 슬롯 검사 시작.
-        if (pool[i].active) continue; // 사용 중인 칸은 건너뛴다.
-        Start(&pool[i]); // 이전 위치도 초기화하며 활성화한다.
+        if (pool[i].active) 
+            continue; // 사용 중인 칸은 건너뛴다.
+        pool[i].x = 0; // 이전 위치도 초기화하며 활성화한다.
+        pool[i].active = 1;
         printf("  SPAWN slot=%d\n", i); // 어떤 칸을 사용했는지 확인한다.
         return; // 한 번의 요청에 한 객체만 생성한다.
     } // 슬롯 검사 끝.
@@ -90,17 +93,23 @@ void Spawn(void) // [추가] 빈자리를 찾아 재사용한다.
 } // Spawn 끝.
 
 int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
-{ // main 시작.
+{ 
     panel("11-04 | GOAL EVENT / SCORE ATTACK"); // 현재 실습 제목이다.
     puts("  s: spawn | Enter: step | q: quit | 3 runners max"); // 조작법이다.
+    
     Spawn(); // 첫 주자를 출발시킨다.
+
     for (;;) // 게임 루프이다.
-    { // 한 틱 시작.
+    { 
         int key = command(); // Input이다.
-        if (key == 'q' || key == EOF) break; // 종료를 처리한다.
-        if (key == 's') Spawn(); // 생성 요청만 처리하고 시간은 진행하지 않는다.
+        if (key == 'q' || key == EOF) 
+            break; // 종료를 처리한다.
+        if (key == 's') 
+            Spawn(); // 생성 요청만 처리하고 시간은 진행하지 않는다.
         if (key == '\n') // Enter를 눌렀을 때만 한 틱 갱신한다.
-            for (int i = 0; i < CAPACITY; ++i) Update(&pool[i]); // 모든 객체 갱신이다.
+            for (int i = 0; i < CAPACITY; ++i) 
+                Update(&pool[i]); // 모든 객체 갱신이다.
+        
         // 직접 호출한 이벤트 처리가 이미 끝났다.
         for (int i = 0; i < CAPACITY; ++i) // Render: 슬롯별로 경로를 그린다.
         { // 슬롯 출력 시작.
@@ -108,6 +117,9 @@ int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
             track(pool[i].x, pool[i].active); // 비활성이면 빈 경로이다.
         } // 슬롯 출력 끝.
     } // 게임 루프 끝.
-    for (int i = 0; i < CAPACITY; ++i) Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
+   
+    for (int i = 0; i < CAPACITY; ++i) 
+        Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
+    
     return 0; // 정상 종료이다.
-} // main 끝.
+} 
