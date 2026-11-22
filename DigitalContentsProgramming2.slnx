@@ -59,4 +59,6 @@
   <Project Path="Lecture13_03/Lecture13_03.vcxproj" Id="11285b47-8a96-48a0-a41e-ba5ffef85d01" />
   <Project Path="Lecture14_01/Lecture14_01.vcxproj" Id="a8975fcd-76d8-49e9-8b10-21aadb4d6c9e" />
   <Project Path="FinalExam00/FinalExam00.vcxproj" Id="ff521ecd-f7e9-4a78-bfae-ffb86d844914" />
+  <Project Path="Lecture12_05/Lecture12_05.vcxproj" Id="0df850d7-9972-40ae-95fb-bd2a5afc993b" />
+  <Project Path="Lecture13_04/Lecture13_04.vcxproj" Id="e5f704fc-9248-410e-b555-c4fab094f540" />
 </Solution>

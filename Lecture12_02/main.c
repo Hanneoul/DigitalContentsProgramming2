@@ -32,27 +32,39 @@
 ==============================================================================
 */
 
-#include "../LectureSupport/console.h" // 화면 도구이다.
-typedef void (*RewardCallback)(int); // [추가] 함수 포인터형에 이름을 붙인다.
+#include <stdio.h>
+
+// 제목을 테두리 안에 정렬한다. printf의 %-56s는 왼쪽 정렬 형식이다.
+static void panel(const char *title)
+{
+    puts("\n+==========================================================+");
+    printf("| %-56s |\n", title);
+    puts("+==========================================================+");
+}
+
+typedef void (*RewardCallback)(int); // 함수 포인터형에 이름을 붙인다.
 
 int gold = 0; // 보상으로 쌓인 골드이다.
 
 void AddGold(int amount) // 모든 단계에서 유지할 보상 함수이다.
-{ // 보상 시작.
-    gold += amount; // 받은 수량을 누적한다.
+{
+    gold += amount;
     printf("  REWARD +%d | GOLD=%d\n", amount, gold); // 결과를 표시한다.
-} // 보상 끝.
+}
 
-void OpenChest(RewardCallback reward) // [추가] 할 일을 함수 주소로 전달받는다.
-{ // 상자 처리 시작.
+void OpenChest(RewardCallback reward) // 할 일을 함수 주소로 전달받는다.
+{
     puts("  [##] -> [__] CHEST OPEN"); // 상자가 열리는 장면이다.
-    if (reward != NULL) reward(20); // 등록된 반응이 있을 때만 호출한다.
-} // 상자 처리 끝.
+    if (reward != NULL) 
+        reward(20); // 등록된 반응이 있을 때만 호출한다.
+}
 
 int main(void) // 실행 시 반응을 전달한다.
-{ // main 시작.
-    panel("12-02 | PASS A CALLBACK"); // 제목이다.
+{
+    panel("12-02 | PASS A CALLBACK");
+    
     OpenChest(AddGold); // 함수 주소를 전달하고 상자가 콜백을 호출하게 한다.
     OpenChest(NULL); // 콜백 없는 동작도 허용하는지 확인한다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+    
+    return 0;
+}

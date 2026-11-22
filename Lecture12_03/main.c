@@ -32,44 +32,72 @@
 ==============================================================================
 */
 
-#include "../LectureSupport/console.h" // 화면 도구이다.
-typedef void (*RewardCallback)(int); // [추가] 함수 포인터형에 이름을 붙인다.
+#include <stdio.h>
+
+// 제목을 테두리 안에 정렬한다. printf의 %-56s는 왼쪽 정렬 형식이다.
+static void panel(const char *title)
+{
+    puts("\n+==========================================================+");
+    printf("| %-56s |\n", title);
+    puts("+==========================================================+");
+}
+
+typedef void (*RewardCallback)(int); // 함수 포인터형에 이름을 붙인다.
 
 int gold = 0; // 보상으로 쌓인 골드이다.
 
-void AddGold(int amount) // 모든 단계에서 유지할 보상 함수이다.
-{ // 보상 시작.
-    gold += amount; // 받은 수량을 누적한다.
-    printf("  REWARD +%d | GOLD=%d\n", amount, gold); // 결과를 표시한다.
-} // 보상 끝.
-
-typedef struct // [추가] 상자의 상태와 나중에 호출할 함수를 묶는다.
-{ // 상자 필드 시작.
-    int opened; // 한 번만 보상하기 위한 상태이다.
+typedef struct // 상자의 상태와 나중에 호출할 함수를 묶는다.
+{
+    int opened;
     RewardCallback onOpen; // 열릴 때 호출할 함수의 주소이다.
 } Chest; // 상자 자료형이다.
 
-void OpenChest(Chest *chest) // [변경] 등록된 콜백을 상자에서 꺼낸다.
-{ // 상자 처리 시작.
-    if (chest->opened) return; // 이미 열린 상자는 다시 보상하지 않는다.
-    chest->opened = 1; // 콜백보다 먼저 상태를 변경해 중복 처리를 막는다.
-    puts("  [##] -> [__] CHEST OPEN"); // 열린 상태를 표시한다.
-    if (chest->onOpen != NULL) chest->onOpen(20); // 등록된 함수를 호출한다.
-} // 상자 처리 끝.
+//콜백함수1
+void AddGold(int amount) // 모든 단계에서 유지할 보상 함수이다.
+{
+    gold += amount;
+    printf("  REWARD +%d | GOLD=%d\n", amount, gold); // 결과를 표시한다.
+}
 
+//콜백함수2
 void PrintSound(int amount) // AddGold와 같은 함수 모양을 지킨다.
-{ // 효과음 반응 시작.
+{
     printf("  SFX: coin sparkle (reward=%d)\n", amount); // 실제 오디오 대신 출력한다.
-} // 효과음 반응 끝.
+}
 
+//게임 API
+void OpenChest(Chest *chest) // 등록된 콜백을 상자에서 꺼낸다.
+{
+    puts("  [##] -> [__] CHEST OPEN"); // 열린 상태를 표시한다.
+    if (chest->opened)
+    {
+        puts("  CHEST ALREADY OPENED T.T"); // 열린 상태를 표시한다.
+        return; // 이미 열린 상자는 다시 보상하지 않는다.
+    }
+    
+    chest->opened = 1; // 콜백보다 먼저 상태를 변경해 중복 처리를 막는다.
+    
+    if (chest->onOpen != NULL) 
+        chest->onOpen(20); // 등록된 함수를 호출한다.
+}
+
+// 규칙: 상자를 OpenChest로 열게 되면 opened가 1로 바뀌며, onOpen이 호출된다.
 int main(void) // 게임 쪽에서 원하는 반응을 등록한다.
-{ // main 시작.
+{
     Chest treasure = {0, AddGold}; // 골드를 주는 상자이다.
     Chest sound = {0, PrintSound}; // 효과음만 표시하는 별도 상자이다.
-    panel("12-03 | REGISTER / REPLACE"); // 제목이다.
+    
+    panel("12-03 | REGISTER / REPLACE");
+        
     OpenChest(&treasure); // GOLD=20이 된다.
     OpenChest(&treasure); // 같은 상자는 재보상하지 않는다.
+    
     OpenChest(&sound); // 같은 함수로 다른 반응을 얻는다.
+    
+    //sound chest 초기화
+    sound.opened = 0;
     sound.onOpen = NULL; // 함수 주소를 지워 등록을 해제한다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+    OpenChest(&sound); // 같은 함수로 다른 반응을 얻는다.
+    
+    return 0;
+}

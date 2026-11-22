@@ -34,106 +34,133 @@
 ==============================================================================
 */
 
-#include "../LectureSupport/console.h" // 화면과 입력이다.
+#include <stdio.h>
+
+// 제목을 테두리 안에 정렬한다. printf의 %-56s는 왼쪽 정렬 형식이다.
+static void panel(const char *title)
+{
+    puts("\n+==========================================================+");
+    printf("| %-56s |\n", title);
+    puts("+==========================================================+");
+}
+
+// 상태를 수정하지 않고 활성 객체만 경로 위에 그린다.
+static void track(int x, int active)
+{
+    fputs("  START |", stdout);
+    for (int cell = 0; cell < 12; ++cell)
+        printf(" %c ", active && cell == x ? '@' : '.');
+    puts("| GOAL");
+}
+
+// getchar는 EOF도 반환하므로 int로 받는다. 한 명령 뒤 남은 줄을 소비한다.
+static int command(void)
+{
+    int key = getchar();
+    int rest = key;
+    while (rest != '\n' && rest != EOF) rest = getchar();
+    return key;
+}
+
 
 typedef struct GameObject GameObject; // 함수 포인터형에서 사용할 이름을 미리 선언한다.
 typedef void (*GoalCallback)(GameObject *, int); // 12강의 대상+수량 콜백이다.
 struct GameObject // 11강의 구조체에 콜백만 추가한다.
-{ // 필드 시작.
-    int x; // 위치이다.
-    int active; // 활성 여부이다.
-    GoalCallback onGoal; // [추가] 도착 시 실행할 반응이다.
-}; // 구조체 정의 끝.
+{
+    int x;
+    int active;
+    GoalCallback onGoal; // 도착 시 실행할 반응이다.
+};
 
-void Start(GameObject *object) // [추가] 한 번의 활성화가 시작될 때 호출한다.
-{ // Start 시작.
+void Start(GameObject *object) // 한 번의 활성화가 시작될 때 호출한다.
+{
     object->x = 0; // 재사용할 때도 출발점으로 초기화한다.
     object->onGoal = NULL; // 이전 사용자의 콜백을 지운다.
     object->active = 1; // 게임에 참여시킨다.
-} // Start 끝.
+}
 
-void Destroy(GameObject *object) // [추가] 게임 참여를 끝낸다.
-{ // Destroy 시작.
+void Destroy(GameObject *object) // 게임 참여를 끝낸다.
+{
     object->active = 0; // 메모리를 해제하지 않고 비활성으로 표시한다.
-} // Destroy 끝.
+}
 
-int score = 0; // [추가] 도착한 주자의 점수를 기록한다.
+int score = 0; // 도착한 주자의 점수를 기록한다.
 
-void OnGoal(GameObject *object, int amount) // [추가] 도착 사건에 대한 게임의 반응이다.
-{ // 이벤트 처리 시작.
+void OnGoal(GameObject *object, int amount) // 도착 사건에 대한 게임의 반응이다.
+{
     score += amount; // 사건 하나에 한 번만 점수를 더한다.
-    printf("  EVENT: GOAL x=%d | SCORE=%d\n", object->x, score); // 사건과 결과이다.
-} // 이벤트 처리 끝.
+    printf("  EVENT: GOAL x=%d | SCORE=%d\n", object->x, score);
+}
 
-enum { LISTENER_CAPACITY = 2 }; // [추가] 동시에 등록할 반응의 최대 수이다.
-GoalCallback listeners[LISTENER_CAPACITY] = {0}; // 빈 콜백 칸이다.
-int listenerCount = 0; // 현재 등록된 수이다.
+enum { LISTENER_CAPACITY = 2 }; // 동시에 등록할 반응의 최대 수이다.
+GoalCallback listeners[LISTENER_CAPACITY] = {0};
+int listenerCount = 0;
 
-int Subscribe(GoalCallback callback) // [추가] 사건 수신 함수를 등록한다.
-{ // 등록 시작.
+int Subscribe(GoalCallback callback) // 사건 수신 함수를 등록한다.
+{
     if (callback == NULL || listenerCount == LISTENER_CAPACITY) return 0; // 잘못된 등록 거절이다.
-    listeners[listenerCount++] = callback; // 끝에 넣고 개수를 늘린다.
-    return 1; // 등록 성공이다.
-} // 등록 끝.
+    listeners[listenerCount++] = callback;
+    return 1;
+}
 
-void EmitGoal(GameObject *object, int amount) // [추가] 한 사건을 모든 구독자에게 전달한다.
-{ // 전달 시작.
-    for (int i = 0; i < listenerCount; ++i) // 등록 순서로 방문한다.
+void EmitGoal(GameObject *object, int amount) // 한 사건을 모든 구독자에게 전달한다.
+{
+    for (int i = 0; i < listenerCount; ++i)
         listeners[i](object, amount); // 같은 사건 정보를 각 반응에 전달한다.
-} // 전달 끝.
+}
 
 void PlaySound(GameObject *object, int amount) // 게임 쪽의 두 번째 반응이다.
-{ // 효과음 반응 시작.
+{
     printf("  SFX: goal bell | x=%d reward=%d\n", object->x, amount); // 효과음 대신 출력한다.
-} // 효과음 반응 끝.
+}
 
-void Update(GameObject *object) // [변경] 변수 대신 객체의 주소를 받는다.
-{ // Update 시작.
+void Update(GameObject *object) // 변수 대신 객체의 주소를 받는다.
+{
     if (!object->active) return; // 비활성 객체는 움직이지 않는다.
     ++object->x; // ->는 포인터가 가리키는 구조체의 필드에 접근한다.
-    if (object->x >= 11) // [변경] 도착 사건을 발견한다.
-    { // 도착 처리 시작.
+    if (object->x >= 11) // 도착 사건을 발견한다.
+    {
         Destroy(object); // 먼저 상태를 확정하여 중복 도착을 막는다.
-        if (object->onGoal != NULL) object->onGoal(object, 10); // [변경] 등록된 반응을 부른다.
-    } // 도착 처리 끝.
-} // Update 끝.
+        if (object->onGoal != NULL) object->onGoal(object, 10); // 등록된 반응을 부른다.
+    }
+}
 
-enum { CAPACITY = 3 }; // [추가] 미리 마련할 객체 수이다.
+enum { CAPACITY = 3 }; // 미리 마련할 객체 수이다.
 GameObject pool[CAPACITY] = {0}; // 전역 배열의 모든 필드는 0으로 시작한다.
 
-void Spawn(GoalCallback onGoal) // [추가] 빈자리를 찾아 재사용한다.
-{ // Spawn 시작.
-    for (int i = 0; i < CAPACITY; ++i) // 배열의 모든 칸을 순서대로 검사한다.
-    { // 슬롯 검사 시작.
+void Spawn(GoalCallback onGoal) // 빈자리를 찾아 재사용한다.
+{
+    for (int i = 0; i < CAPACITY; ++i)
+    {
         if (pool[i].active) continue; // 사용 중인 칸은 건너뛴다.
         Start(&pool[i]); // 재사용 상태를 초기화한다.
-        pool[i].onGoal = onGoal; // [추가] 이번 생애의 반응을 등록한다.
-        printf("  SPAWN slot=%d\n", i); // 어떤 칸을 사용했는지 확인한다.
+        pool[i].onGoal = onGoal; // 이번 생애의 반응을 등록한다.
+        printf("  SPAWN slot=%d\n", i);
         return; // 한 번의 요청에 한 객체만 생성한다.
-    } // 슬롯 검사 끝.
+    }
     puts("  POOL FULL | Wait for a runner to reach the gate."); // 가득 차면 거절한다.
-} // Spawn 끝.
+}
 
 int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
-{ // main 시작.
-    if (!Subscribe(OnGoal) || !Subscribe(PlaySound)) return 1; // [추가] 게임 반응을 연결한다.
-    panel("13-02 | ONE EVENT / TWO LISTENERS"); // 현재 실습 제목이다.
-    puts("  s: spawn | Enter: step | q: quit | 3 runners max"); // 조작법이다.
+{
+    if (!Subscribe(OnGoal) || !Subscribe(PlaySound)) return 1; // 게임 반응을 연결한다.
+    panel("13-02 | ONE EVENT / TWO LISTENERS");
+    puts("  s: spawn | Enter: step | q: quit | 3 runners max");
     Spawn(EmitGoal); // 첫 주자를 출발시킨다.
-    for (;;) // 게임 루프이다.
-    { // 한 틱 시작.
-        int key = command(); // Input이다.
+    for (;;)
+    {
+        int key = command();
         if (key == 'q' || key == EOF) break; // 종료를 처리한다.
         if (key == 's') Spawn(EmitGoal); // 생성 요청만 처리하고 시간은 진행하지 않는다.
         if (key == '\n') // Enter를 눌렀을 때만 한 틱 갱신한다.
             for (int i = 0; i < CAPACITY; ++i) Update(&pool[i]); // 모든 객체 갱신이다.
         // 01에서는 콜백이 Update 안에서 즉시 실행된다.
         for (int i = 0; i < CAPACITY; ++i) // Render: 슬롯별로 경로를 그린다.
-        { // 슬롯 출력 시작.
-            printf("  SLOT %d | %s\n", i, pool[i].active ? "ACTIVE" : "FREE"); // 상태이다.
+        {
+            printf("  SLOT %d | %s\n", i, pool[i].active ? "ACTIVE" : "FREE");
             track(pool[i].x, pool[i].active); // 비활성이면 빈 경로이다.
-        } // 슬롯 출력 끝.
-    } // 게임 루프 끝.
+        }
+    }
     for (int i = 0; i < CAPACITY; ++i) Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+    return 0;
+}

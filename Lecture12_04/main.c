@@ -32,40 +32,49 @@
 ==============================================================================
 */
 
-#include "../LectureSupport/console.h" // 화면 도구이다.
+#include <stdio.h>
+
+// 제목을 테두리 안에 정렬한다. printf의 %-56s는 왼쪽 정렬 형식이다.
+static void panel(const char *title)
+{
+    puts("\n+==========================================================+");
+    printf("| %-56s |\n", title);
+    puts("+==========================================================+");
+}
+
 
 typedef struct GameObject GameObject; // 아래 구조체 이름을 먼저 알려 준다.
 typedef void (*GoalCallback)(GameObject *, int); // 객체 주소와 보상량을 받는 함수형이다.
 
-struct GameObject // [변경] 상자 대신 11강에서 만들었던 게임 객체이다.
-{ // 필드 시작.
+struct GameObject // 상자 대신 11강에서 만들었던 게임 객체이다.
+{
     int x; // 11강의 위치를 유지한다.
     int active; // 11강의 활성 상태를 유지한다.
-    int gold; // [추가] 이 객체가 받은 보상이다.
-    GoalCallback onGoal; // [추가] 도착 시 반응이다.
-}; // 구조체 정의 끝.
+    int gold; // 이 객체가 받은 보상이다.
+    GoalCallback onGoal; // 도착 시 반응이다.
+};
 
-void AddGold(GameObject *object, int amount) // [변경] 보상을 받을 대상도 받는다.
-{ // 보상 시작.
+void AddGold(GameObject *object, int amount) // 보상을 받을 대상도 받는다.
+{
     object->gold += amount; // 전역 골드 대신 해당 객체만 바꾼다.
-    printf("  OBJECT GOLD=%d | REWARD=%d\n", object->gold, amount); // 결과이다.
-} // 보상 끝.
+    printf("  OBJECT GOLD=%d | REWARD=%d\n", object->gold, amount);
+}
 
 void ReachGoal(GameObject *object) // 도착 사건을 간단히 재현하는 함수이다.
-{ // 도착 시작.
+{
     if (!object->active) return; // 이미 끝난 객체는 재보상하지 않는다.
     object->x = 11; // 도착 위치로 바꾼다.
     object->active = 0; // 콜백 전에 상태를 확정한다.
     if (object->onGoal != NULL) object->onGoal(object, 20); // 대상과 보상량을 전달한다.
-} // 도착 끝.
+}
 
 int main(void) // 객체별 사건 정보를 확인한다.
-{ // main 시작.
+{
     GameObject first = {0, 1, 0, AddGold}; // 첫 객체의 보상은 독립적이다.
     GameObject second = {0, 1, 0, AddGold}; // 같은 콜백을 공유해도 상태는 다르다.
-    panel("12-04 | WHO RECEIVES THE REWARD?"); // 제목이다.
+    panel("12-04 | WHO RECEIVES THE REWARD?");
     ReachGoal(&first); // 첫 객체가 20을 받는다.
     ReachGoal(&second); // 둘째 객체가 20을 받는다.
     ReachGoal(&first); // 비활성 객체는 중복 처리하지 않는다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+    return 0;
+}

@@ -29,21 +29,30 @@
 ==============================================================================
 */
 
-#include "../LectureSupport/console.h" // 제목 출력이다.
+#include <stdio.h>
+
+// 제목을 테두리 안에 정렬한다. printf의 %-56s는 왼쪽 정렬 형식이다.
+static void panel(const char *title)
+{
+    puts("\n+==========================================================+");
+    printf("| %-56s |\n", title);
+    puts("+==========================================================+");
+}
+
 
 int gold = 0; // 보상으로 쌓인 골드이다.
 
 void AddGold(int amount) // 모든 단계에서 유지할 보상 함수이다.
-{ // 보상 시작.
-    gold += amount; // 받은 수량을 누적한다.
+{
+    gold += amount;
     printf("  REWARD +%d | GOLD=%d\n", amount, gold); // 결과를 표시한다.
-} // 보상 끝.
+}
 
 int main(void) // 함수 주소 복습이다.
-{ // main 시작.
-    void (*reward)(int) = AddGold; // [추가] 함수를 호출하지 않고 주소를 저장한다.
-    panel("12-01 | REWARD QUICK SLOT"); // 제목이다.
+{
+    void (*reward)(int) = AddGold; // 함수를 호출하지 않고 주소를 저장한다.
+    panel("12-01 | REWARD QUICK SLOT");
     AddGold(10); // 기존 방식: 이름으로 직접 호출한다.
-    reward(20); // [추가] 주소를 통해 같은 함수를 호출한다.
-    return 0; // 정상 종료이다.
-} // main 끝.
+    reward(20); // 주소를 통해 같은 함수를 호출한다.
+    return 0;
+}

@@ -1,0 +1,5 @@
+
+[2026-11-22 15:17:50 +09:00] Lecture12·13 강의 개편
+프로젝트 밖 LectureSupport/console.h 참조 제거. 필요한 함수를 main.c에 포함. 자명한 시작/끝·대입·출력 주석 제거, 함수 역할과 핵심 로직 설명 유지.
+검증: Visual Studio Debug/x64 및 별도 폴더에서 main.c 단독 /std:c17 /W4 /WX 컴파일 통과.
+관련 요구사항: ../Lecture12_13.md

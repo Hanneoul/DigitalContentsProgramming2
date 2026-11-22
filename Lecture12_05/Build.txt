@@ -1,0 +1,5 @@
+
+[2026-11-22 15:17:50 +09:00] Lecture12·13 강의 개편
+완성형 게임 신규 추가. main.c 한 파일, 표준 C17, 승패/재시작/도움말/EOF, 교재와 README, 별도 tests.c 포함.
+검증: Visual Studio Debug/x64 및 별도 폴더에서 main.c 단독 /std:c17 /W4 /WX 컴파일 통과.
+관련 요구사항: ../Lecture12_13.md
