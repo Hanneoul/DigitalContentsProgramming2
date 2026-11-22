@@ -42,7 +42,6 @@ static void panel(const char *title)
     puts("+==========================================================+");
 }
 
-
 typedef struct GameObject GameObject; // 아래 구조체 이름을 먼저 알려 준다.
 typedef void (*GoalCallback)(GameObject *, int); // 객체 주소와 보상량을 받는 함수형이다.
 
@@ -73,8 +72,10 @@ int main(void) // 객체별 사건 정보를 확인한다.
     GameObject first = {0, 1, 0, AddGold}; // 첫 객체의 보상은 독립적이다.
     GameObject second = {0, 1, 0, AddGold}; // 같은 콜백을 공유해도 상태는 다르다.
     panel("12-04 | WHO RECEIVES THE REWARD?");
+    
     ReachGoal(&first); // 첫 객체가 20을 받는다.
     ReachGoal(&second); // 둘째 객체가 20을 받는다.
     ReachGoal(&first); // 비활성 객체는 중복 처리하지 않는다.
+    
     return 0;
 }

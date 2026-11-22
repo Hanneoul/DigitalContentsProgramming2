@@ -41,6 +41,81 @@
 ==============================================================================
  [실습 코드] 먼저 실행 → 예측 → 추가 부분 작성 → 다시 실행
 ==============================================================================
+
+
+============================================================================
+ [이벤트 큐(Event Queue) 개념 및 제공 소스코드 해설]
+============================================================================
+
+1. 이벤트 큐(Event Queue)란 무엇인가?
+   - 사건(Event)이 발생한 즉시 핸들러(콜백)를 바로 실행하지 않고, 일단
+     대기열(배열/큐)에 차곡차곡 쌓아 두었다가 정해진 시점에 순서대로
+     꺼내 처리하는 구조임.
+   - 보통 먼저 발생한 사건을 먼저 처리하는 FIFO(First-In, First-Out,
+     선입선출) 방식으로 동작함.
+
+2. 왜 이벤트 큐를 쓰는가? (즉시 호출 vs 큐 적재 후 일괄 디스패치)
+   - 실행 순서 안정화:
+     한 틱(프레임)에서 여러 객체(slot 0, 1, 2)를 갱신하는 도중 사건이
+     생겨도, 갱신이 끝날 때까지 기다렸다가 한 번에 처리할 수 있음.
+     (UPDATE -> EVENTS -> RENDER 단계 분리)
+   - 재진입 / 상태 꼬임 방지:
+     객체 이동·상태 변경 중간에 외부 반응(점수 갱신, 사운드, 객체 상태
+     변경 등)이 끼어들어 루프 중 배열/객체 상태가 예상치 못하게 바뀌는
+     상황을 줄임.
+   - 용량 제한과 정책 결정:
+     고정 크기 배열(QUEUE_CAPACITY)을 쓰면 큐가 가득 찼을 때 새 사건을
+     버릴지(drop), 덮어쓸지, 큐를 확장할지 같은 정책을 명시적으로 다룰 수
+     있음.
+
+3. 이 소스코드의 전체 구조와 동작 흐름
+
+   [1] 사건 및 객체 정의
+       - GoalEvent: 도착 사건 정보(slot, x, amount)를 담는 구조체임.
+       - GameObject: 위치(x), 활성 여부(active), 풀 인덱스(slot), 도착 시
+         호출할 콜백(onGoal)을 가짐.
+       - pool[CAPACITY]: 미리 할당해 둔 고정 크기 객체 풀임. Spawn()은
+         비활성 슬롯을 찾아 Start()로 초기화해 재사용하고, Destroy()는
+         active = 0으로만 바꿈.
+
+   [2] 구독자(Listener / Event Handler) 등록
+       - listeners[LISTENER_CAPACITY]: GoalEvent를 받을 함수 포인터 배열임.
+       - Subscribe(): OnGoal, PlaySound 같은 콜백 함수를 등록함. 같은
+         사건에 여러 구독자를 붙여 동시에 반응하게 만들 수 있음.
+
+   [3] 이벤트 큐 적재(PostGoal)와 전달(Dispatch)
+       - PostGoal(): 사건을 당장 실행하지 않고 events[eventCount++]에
+         구조체 값(*event)을 복사해 넣음. 가득 차면 "EVENT QUEUE FULL"을
+         출력하고 새 사건을 버림.
+       - Dispatch(): 큐에 쌓인 사건(0 ~ eventCount - 1)을 순서대로 꺼내
+         모든 구독자(listeners[0 .. listenerCount - 1])에게 &events[e]를
+         넘겨 호출함. 처리가 끝나면 eventCount = 0으로 초기화해 다음 틱에
+         배열을 재사용함.
+
+   [4] 메인 루프 (UPDATE -> EVENTS -> RENDER)
+       - 's': Spawn(PostGoal)으로 빈 슬롯에 주자를 배치하고, 이 주자의
+         onGoal 콜백으로 PostGoal 함수 포인터를 연결함.
+       - '\n'(Enter): 활성화된 모든 GameObject의 Update()를 수행함.
+         x를 1 증가시키고 x >= 11이 되면 Destroy()로 비활성화한 뒤,
+         지역 변수 GoalEvent를 만들어 onGoal(&event)를 호출함. 이때
+         onGoal이 PostGoal이므로 지역 변수 주소가 사라지기 전에 구조체
+         값이 events 배열에 복사됨.
+       - Dispatch(): 한 틱의 갱신이 끝난 뒤 쌓인 GoalEvent들을 구독자
+         (OnGoal, PlaySound)에게 전달해 점수와 사운드 로그를 출력함.
+       - Render: 각 슬롯의 ACTIVE/FREE 상태와 경로(track)를 화면에 그림.
+
+4. C언어 관점에서 눈여겨볼 핵심 포인트
+   - 지역 변수 포인터와 값 복사:
+     Update() 안의 GoalEvent event는 함수가 끝나면 사라지는 지역 변수임.
+     PostGoal()이 포인터만 저장했다면 Dispatch() 시점에 잘못된 메모리를
+     읽게 되므로, events[eventCount++] = *event 로 "값 자체를 복사"해
+     안전성을 확보함.
+   - 콜백의 역할 분리:
+     GameObject는 "도착했다"는 사실과 GoalCallback 타입만 알 뿐, 실제로
+     큐에 넣는지(PostGoal) 아니면 다른 방식으로 처리하는지는 Spawn 시점에
+     주입된 함수 포인터에 의해 결정됨.
+============================================================================
+
 */
 
 #include <stdio.h>
@@ -65,9 +140,8 @@ static void track(int x, int active)
 // getchar는 EOF도 반환하므로 int로 받는다. 한 명령 뒤 남은 줄을 소비한다.
 static int command(void)
 {
-    int key = getchar();
-    int rest = key;
-    while (rest != '\n' && rest != EOF) rest = getchar();
+    int key = getch();
+    
     return key;
 }
 
@@ -119,7 +193,8 @@ int listenerCount = 0;
 
 int Subscribe(GoalCallback callback) // 사건 수신 함수를 등록한다.
 {
-    if (callback == NULL || listenerCount == LISTENER_CAPACITY) return 0; // 잘못된 등록 거절이다.
+    if (callback == NULL || listenerCount == LISTENER_CAPACITY) 
+        return 0; // 잘못된 등록 거절이다.
     listeners[listenerCount++] = callback;
     return 1;
 }
@@ -178,24 +253,35 @@ void Spawn(GoalCallback onGoal) // 빈자리를 찾아 재사용한다.
 
 int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
 {
-    if (!Subscribe(OnGoal) || !Subscribe(PlaySound)) return 1; // 게임 반응을 연결한다.
+    if (!Subscribe(OnGoal) || !Subscribe(PlaySound)) 
+        return 1; // 게임 반응을 연결한다.
+
     panel("13-03 | UPDATE -> EVENTS -> RENDER");
     puts("  s: spawn | Enter: step | q: quit | 3 runners max");
     Spawn(PostGoal); // 첫 주자를 출발시킨다.
-    for (;;)
+
+    while (1)
     {
         int key = command();
+        system("cls");
+
         if (key == 'q' || key == EOF) break; // 종료를 처리한다.
         if (key == 's') Spawn(PostGoal); // 생성 요청만 처리하고 시간은 진행하지 않는다.
-        if (key == '\n') // Enter를 눌렀을 때만 한 틱 갱신한다.
-            for (int i = 0; i < CAPACITY; ++i) Update(&pool[i]); // 모든 객체 갱신이다.
+        if (key == 13) // Enter를 눌렀을 때만 한 틱 갱신한다.
+            for (int i = 0; i < CAPACITY; ++i) 
+                Update(&pool[i]); // 모든 객체 갱신이다.
         Dispatch(); // 모든 갱신 후 사건을 처리하고 화면을 그린다.
+       
+        
         for (int i = 0; i < CAPACITY; ++i) // Render: 슬롯별로 경로를 그린다.
         {
             printf("  SLOT %d | %s\n", i, pool[i].active ? "ACTIVE" : "FREE");
             track(pool[i].x, pool[i].active); // 비활성이면 빈 경로이다.
         }
     }
-    for (int i = 0; i < CAPACITY; ++i) Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
+
+    for (int i = 0; i < CAPACITY; ++i) 
+        Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
+
     return 0;
 }

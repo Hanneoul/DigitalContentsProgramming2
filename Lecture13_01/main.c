@@ -50,18 +50,10 @@ static void track(int x, int active)
     puts("| GOAL");
 }
 
-// getchar는 EOF도 반환하므로 int로 받는다. 한 명령 뒤 남은 줄을 소비한다.
-static int command(void)
-{
-    int key = getchar();
-    int rest = key;
-    while (rest != '\n' && rest != EOF) rest = getchar();
-    return key;
-}
-
 
 typedef struct GameObject GameObject; // 함수 포인터형에서 사용할 이름을 미리 선언한다.
 typedef void (*GoalCallback)(GameObject *, int); // 12강의 대상+수량 콜백이다.
+
 struct GameObject // 11강의 구조체에 콜백만 추가한다.
 {
     int x;
@@ -107,7 +99,8 @@ void Spawn(GoalCallback onGoal) // 빈자리를 찾아 재사용한다.
 {
     for (int i = 0; i < CAPACITY; ++i)
     {
-        if (pool[i].active) continue; // 사용 중인 칸은 건너뛴다.
+        if (pool[i].active) 
+            continue; // 사용 중인 칸은 건너뛴다.
         Start(&pool[i]); // 재사용 상태를 초기화한다.
         pool[i].onGoal = onGoal; // 이번 생애의 반응을 등록한다.
         printf("  SPAWN slot=%d\n", i);
@@ -116,25 +109,42 @@ void Spawn(GoalCallback onGoal) // 빈자리를 찾아 재사용한다.
     puts("  POOL FULL | Wait for a runner to reach the gate."); // 가득 차면 거절한다.
 }
 
-int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
+void Render()
 {
     panel("13-01 | MINI ENGINE / CALLBACK");
     puts("  s: spawn | Enter: step | q: quit | 3 runners max");
-    Spawn(OnGoal); // 첫 주자를 출발시킨다.
-    for (;;)
+
+    for (int i = 0; i < CAPACITY; ++i) // Render: 슬롯별로 경로를 그린다.
     {
-        int key = command();
-        if (key == 'q' || key == EOF) break; // 종료를 처리한다.
-        if (key == 's') Spawn(OnGoal); // 생성 요청만 처리하고 시간은 진행하지 않는다.
-        if (key == '\n') // Enter를 눌렀을 때만 한 틱 갱신한다.
-            for (int i = 0; i < CAPACITY; ++i) Update(&pool[i]); // 모든 객체 갱신이다.
-        // 01에서는 콜백이 Update 안에서 즉시 실행된다.
-        for (int i = 0; i < CAPACITY; ++i) // Render: 슬롯별로 경로를 그린다.
-        {
-            printf("  SLOT %d | %s\n", i, pool[i].active ? "ACTIVE" : "FREE");
-            track(pool[i].x, pool[i].active); // 비활성이면 빈 경로이다.
-        }
+        printf("  SLOT %d | %s\n", i, pool[i].active ? "ACTIVE" : "FREE");
+        track(pool[i].x, pool[i].active); // 비활성이면 빈 경로이다.
     }
+}
+
+int main(void) // 02의 게임 루프를 배열 순회로 확장한다.
+{
+    Spawn(OnGoal); // 첫 주자를 출발시킨다.
+    Render();
+
+    while(1)
+    {
+        //input
+        int key = getch();
+        
+        //update
+        system("cls");
+        if (key == 'q' || key == EOF) 
+            break; // 종료를 처리한다.
+        if (key == 's') Spawn(OnGoal); // 생성 요청만 처리하고 시간은 진행하지 않는다.
+        if (key == 13) // Enter를 눌렀을 때만 한 틱 갱신한다.
+            for (int i = 0; i < CAPACITY; ++i) 
+                Update(&pool[i]); // 모든 객체 갱신이다. 01에서는 콜백이 Update 안에서 즉시 실행된다.
+        
+        //render
+        Render();
+    }
+
     for (int i = 0; i < CAPACITY; ++i) Destroy(&pool[i]); // 종료 시 참여를 끝낸다.
+    
     return 0;
 }

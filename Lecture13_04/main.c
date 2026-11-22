@@ -8,7 +8,8 @@
 
  1. 앞 강의의 코드가 게임이 되는 과정
     13_01의 객체 콜백 → Emit으로 사건 전달.
-    13_02의 여러 구독자 → ApplyRules(점수/피해), Record(전투 기록).
+    13_02의 여러 구독자 → ApplyRules(점수/피해), Record(전투 기록)
+    ㅇ.
     13_03의 사건 값 복사 → 갱신 완료 뒤 Dispatch.
     Input → 총알 갱신 → 적 갱신 → Dispatch → 웨이브 판정 → Render.
     이벤트는 구조체 값으로 저장한다. 풀 객체 주소를 저장하면 재사용된 적을
@@ -58,20 +59,19 @@ struct Game
 };
 
 // 표준 입력은 줄 단위다. 여러 명령을 한 줄에 붙이면 오류로 처리한다.
-static int ReadCommand(void)
+int ReadCommand(void)
 {
-    int key = getchar(), ch = key, valid = 1;
-    while (ch != '\n' && ch != EOF)
-    {
-        ch = getchar();
-        if (ch != '\n' && ch != '\r' && ch != EOF && ch != ' ' && ch != '\t') valid = 0;
+    Sleep(200);
+    if (_kbhit()) {
+        int key = getch(), valid = 1;
+        if (key >= 'A' && key <= 'Z') key += 'a' - 'A';
+        return valid ? key : '?';
     }
-    if (key >= 'A' && key <= 'Z') key += 'a' - 'A';
-    return valid ? key : '?';
+    return '.';
 }
 
 // 시작 시에만 등록한다. 중복 구독으로 점수가 두 번 더해지는 실수를 차단한다.
-static int Subscribe(Game *game, Listener listener)
+int Subscribe(Game *game, Listener listener)
 {
     if (listener == NULL || game->listenerCount >= LISTENERS) return 0;
     for (int i = 0; i < game->listenerCount; ++i)
@@ -81,14 +81,14 @@ static int Subscribe(Game *game, Listener listener)
 }
 
 // 사건 당시의 값을 복사한다. 큐 포화는 게임 규칙 오류이므로 명시적으로 실패시킨다.
-static void Emit(Game *game, EventType type, int lane, int amount)
+void Emit(Game *game, EventType type, int lane, int amount)
 {
     if (game->eventCount >= QUEUE) { game->failed = 1; return; }
     game->queue[game->eventCount++] = (Event){type, lane, amount};
 }
 
 // 점수·기지 피해·웨이브 보상 담당 구독자. 객체 풀은 수정하지 않는다.
-static void ApplyRules(Game *game, const Event *event)
+void ApplyRules(Game *game, const Event *event)
 {
     if (event->type == DESTROYED) game->score += event->amount;
     if (event->type == BREACHED)
@@ -104,7 +104,7 @@ static void ApplyRules(Game *game, const Event *event)
 }
 
 // 최근 사건만 남긴다. snprintf는 목적지 버퍼의 크기까지 받아 과도한 출력을 제한한다.
-static void Record(Game *game, const Event *event)
+void Record(Game *game, const Event *event)
 {
     static const char *names[] = {"SHOT", "HIT", "ENEMY DOWN", "BASE HIT", "WAVE CLEARED"};
     for (int i = LOGS - 1; i > 0; --i) memcpy(game->log[i], game->log[i - 1], sizeof game->log[i]);
@@ -113,7 +113,7 @@ static void Record(Game *game, const Event *event)
 }
 
 // 현재 큐를 등록 순서대로 처리한다. 콜백 내부에서 Emit/Subscribe를 호출하지 않는 계약이다.
-static void Dispatch(Game *game)
+void Dispatch(Game *game)
 {
     for (int e = 0; e < game->eventCount; ++e)
         for (int i = 0; i < game->listenerCount; ++i)
@@ -122,7 +122,7 @@ static void Dispatch(Game *game)
 }
 
 // 생성 성공 시 슬롯 주소, 풀 포화 시 NULL. 활성 객체를 덮어쓰지 않는다.
-static Object *Spawn(Object pool[], int lane, int x, int hp)
+Object *Spawn(Object pool[], int lane, int x, int hp)
 {
     for (int i = 0; i < POOL; ++i)
         if (!pool[i].active)
@@ -133,7 +133,7 @@ static Object *Spawn(Object pool[], int lane, int x, int hp)
     return NULL;
 }
 
-static int ActiveCount(const Object pool[])
+int ActiveCount(const Object pool[])
 {
     int count = 0;
     for (int i = 0; i < POOL; ++i) count += pool[i].active != 0;
@@ -141,7 +141,7 @@ static int ActiveCount(const Object pool[])
 }
 
 // 충돌 시 즉시 비활성화하여 동일한 적의 중복 처치 사건을 막는다.
-static void Hit(Game *game, Object *enemy, int damage)
+void Hit(Game *game, Object *enemy, int damage)
 {
     if (!enemy->active) return;
     enemy->hp -= damage;
@@ -154,7 +154,7 @@ static void Hit(Game *game, Object *enemy, int damage)
 }
 
 // 고정된 시작값을 쓰므로 같은 명령으로 같은 판을 재현하며 디버깅할 수 있다.
-static void Start(Game *game)
+void Start(Game *game)
 {
     Game fresh = {0};
     fresh.hp = 5; fresh.lane = 1; fresh.bombs = 2; fresh.wave = 1; fresh.random = 2026;
@@ -162,17 +162,15 @@ static void Start(Game *game)
     if (!Subscribe(game, ApplyRules) || !Subscribe(game, Record)) game->failed = 1;
 }
 
-static void Help(void)
+
+void Render(const Game *game)
 {
-    puts("  A/D: change lane | F: fire | B: bomb ALL lanes | .: wait");
-    puts("  H: help | Q: quit | Every command needs Enter.");
+    system("cls");
+    puts("  W/S: change lane | F: fire | B: bomb ALL lanes | .: wait | Q: quit ");
     puts("  @ turret  > bullet  E enemy  H armored enemy. Defend all three lanes!");
     puts("  Bombs hit every enemy. Clearing a wave restores one bomb (up to three).");
-    puts("  Survive three waves. Only help and invalid commands do not advance time.");
-}
+    puts("  Survive three waves. Only invalid commands do not advance time.\n");
 
-static void Render(const Game *game)
-{
     printf("\n+=============== LAST GATE / WAVE %d ===============+\n", game->wave);
     printf("  BASE %d/5 | SCORE %d | BOMBS %d | TURN %d | INCOMING %d\n",
         game->hp, game->score, game->bombs, game->turn, 4 + game->wave * 2 - game->spawned);
@@ -195,12 +193,12 @@ static void Render(const Game *game)
     for (int i = LOGS - 1; i >= 0; --i) if (game->log[i][0] != '\0') printf("  %s\n", game->log[i]);
 }
 
-static int Act(Game *game, int key)
+int Act(Game *game, int key)
 {
     switch (key)
     {
-    case 'a': if (game->lane > 0) --game->lane; break;
-    case 'd': if (game->lane < LANES - 1) ++game->lane; break;
+    case 'w': if (game->lane > 0) --game->lane; break;
+    case 's': if (game->lane < LANES - 1) ++game->lane; break;
     case 'f':
         if (Spawn(game->bullets, game->lane, 1, 1) != NULL) Emit(game, FIRED, game->lane, 1);
         else puts("  All bullet slots are busy.");
@@ -210,15 +208,14 @@ static int Act(Game *game, int key)
         --game->bombs;
         for (int i = 0; i < POOL; ++i) Hit(game, &game->enemies[i], 2);
         break;
-    case '.': break;
-    case 'h': Help(); return 0;
-    default: puts("  Unknown command. H shows help."); return 0;
+    case '.': break;        
+    default: puts("  Unknown command."); return 0;
     }
     return 1;
 }
 
 // 탄환의 두 칸 이동 구간에서 가장 가까운 적 하나만 맞힌다.
-static void UpdateBullets(Game *game)
+void UpdateBullets(Game *game)
 {
     for (int i = 0; i < POOL; ++i)
     {
@@ -239,7 +236,7 @@ static void UpdateBullets(Game *game)
 }
 
 // 적은 두 턴에 한 칸 전진한다. 적 이동 직후 겹침도 검사한 뒤 기지 도달을 판정한다.
-static void UpdateEnemies(Game *game)
+void UpdateEnemies(Game *game)
 {
     if (game->turn % 2 != 0) return;
     for (int i = 0; i < POOL; ++i)
@@ -262,7 +259,7 @@ static void UpdateEnemies(Game *game)
 }
 
 // 스폰 예약을 성공했을 때만 소비한다. 풀 포화면 다음 턴에 다시 시도한다.
-static void SpawnEnemy(Game *game)
+void SpawnEnemy(Game *game)
 {
     if (game->spawned >= 4 + game->wave * 2 || --game->spawnClock > 0) return;
     unsigned int next = game->random * 1664525u + 1013904223u;
@@ -275,7 +272,7 @@ static void SpawnEnemy(Game *game)
 }
 
 // 모든 피해 사건을 적용한 뒤 승패를 판단한다. 마지막 적이 기지를 파괴하면 패배 우선이다.
-static void Tick(Game *game)
+void Tick(Game *game)
 {
     ++game->turn;
     UpdateBullets(game);
@@ -299,7 +296,7 @@ static void Tick(Game *game)
 int main(void)
 {
     Game game;
-    Start(&game); Help();
+    Start(&game);
     for (;;)
     {
         Render(&game);

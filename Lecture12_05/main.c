@@ -26,7 +26,7 @@
     보물 타일을 '.'으로 지우므로 같은 곳에서 무한 보상을 얻을 수 없다.
 
  4. 표준 API
-    getchar/putchar: 한 문자 입출력. EOF를 구분하려면 getchar 결과는 int이다.
+    getch/putchar: 한 문자 입출력. 
     printf: 형식을 정해 상태와 전투 기록을 출력한다.
     memcpy: 고정 지도 배열을 새 게임 상태로 복사한다.
     abs: 좌표 차이의 절댓값. 두 차이의 합은 격자에서의 맨해튼 거리이다.
@@ -72,7 +72,7 @@ struct Game
     int turn, won;
 };
 
-static const char dungeon[HEIGHT][WIDTH + 1] = {
+const char dungeon[HEIGHT][WIDTH + 1] = {
     "###############",
     "#....#...$...E#",
     "#....#........#",
@@ -85,20 +85,16 @@ static const char dungeon[HEIGHT][WIDTH + 1] = {
 };
 
 // 한 줄에 한 명령만 허용한다. 긴 줄과 여러 글자를 다음 턴으로 넘기지 않는다.
-static int ReadCommand(void)
+int Input(void)
 {
-    int key = getchar(), ch = key, valid = 1;
-    while (ch != '\n' && ch != EOF)
-    {
-        ch = getchar();
-        if (ch != '\n' && ch != '\r' && ch != EOF && ch != ' ' && ch != '\t') valid = 0;
-    }
-    if (key >= 'A' && key <= 'Z') key += 'a' - 'A';
+    int key = getch(), ch = key, valid = 1;
+    if (key >= 'A' && key <= 'Z') 
+        key += 'a' - 'A';
     return valid ? key : '?';
 }
 
 // 살아 있는 적만 검색한다. 시체는 이동을 막지 않는다.
-static Monster *MonsterAt(Game *game, int x, int y)
+Monster *MonsterAt(Game *game, int x, int y)
 {
     for (int i = 0; i < ENEMIES; ++i)
         if (game->enemies[i].hp > 0 && game->enemies[i].x == x && game->enemies[i].y == y)
@@ -106,33 +102,35 @@ static Monster *MonsterAt(Game *game, int x, int y)
     return NULL;
 }
 
-static int Walkable(const Game *game, int x, int y)
+int Walkable(const Game *game, int x, int y)
 {
     return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT && game->map[y][x] != '#';
 }
 
 // 무기와 적 공격이 공유하는 피해 처리. 처치 보상은 생존→사망 전환에서만 지급한다.
-static void HurtMonster(Game *game, Monster *enemy, int damage)
+void HurtMonster(Game *game, Monster *enemy, int damage)
 {
-    if (enemy->hp <= 0) return;
+    if (enemy->hp <= 0) 
+        return;
     enemy->hp -= damage;
     printf("  HIT %s -%d\n", enemy->name, damage);
     if (enemy->hp <= 0)
     {
         enemy->hp = 0;
         game->hero.mana += 3;
-        if (game->hero.mana > MAX_MANA) game->hero.mana = MAX_MANA;
+        if (game->hero.mana > MAX_MANA) 
+            game->hero.mana = MAX_MANA;
         printf("  %s defeated! Mana recovered.\n", enemy->name);
     }
 }
 
-static void Sword(Game *game, Monster *enemy)
+void Sword(Game *game, Monster *enemy)
 {
     HurtMonster(game, enemy, 6);
 }
 
 // 콜백 안에서 자원 조건을 검사한다. 마나 부족이면 공격을 취소하되 턴은 소비한다.
-static void Fire(Game *game, Monster *enemy)
+void Fire(Game *game, Monster *enemy)
 {
     if (game->hero.mana < 3) { puts("  Not enough mana. Equip the sword!"); return; }
     game->hero.mana -= 3;
@@ -140,7 +138,7 @@ static void Fire(Game *game, Monster *enemy)
     HurtMonster(game, enemy, 11);
 }
 
-static void Bite(Game *game, Monster *enemy)
+void Bite(Game *game, Monster *enemy)
 {
     game->hero.hp -= enemy->power;
     if (game->hero.hp < 0) game->hero.hp = 0;
@@ -148,18 +146,24 @@ static void Bite(Game *game, Monster *enemy)
 }
 
 // 수문장과 보스는 자리를 지키며 인접한 용사만 공격한다.
-static void Guard(Game *game, Monster *enemy)
+void Guard(Game *game, Monster *enemy)
 {
-    if (abs(enemy->x - game->hero.x) + abs(enemy->y - game->hero.y) == 1) Bite(game, enemy);
+    if (abs(enemy->x - game->hero.x) + abs(enemy->y - game->hero.y) == 1) 
+        Bite(game, enemy);
 }
 
 // 추격자는 가까이 있을 때 축 하나를 따라 움직인다. 최단 경로 탐색은 후속 과제이다.
-static void Chase(Game *game, Monster *enemy)
+void Chase(Game *game, Monster *enemy)
 {
     int dx = game->hero.x - enemy->x, dy = game->hero.y - enemy->y;
     int distance = abs(dx) + abs(dy);
-    if (distance == 1) { Bite(game, enemy); return; }
-    if (distance > 5) return;
+    if (distance == 1) 
+    { 
+        Bite(game, enemy); 
+        return; 
+    }
+    if (distance > 5) 
+        return;
     int nx = enemy->x + (dx > 0) - (dx < 0), ny = enemy->y;
     if (dx == 0 || !Walkable(game, nx, ny) || MonsterAt(game, nx, ny) != NULL)
     {
@@ -167,11 +171,14 @@ static void Chase(Game *game, Monster *enemy)
         ny = enemy->y + (dy > 0) - (dy < 0);
     }
     if (Walkable(game, nx, ny) && MonsterAt(game, nx, ny) == NULL)
-    { enemy->x = nx; enemy->y = ny; }
+    { 
+        enemy->x = nx; 
+        enemy->y = ny; 
+    }
 }
 
 // 상태 전체를 새로 구성하므로 재시작 때 보물·처치·콜백이 이전 판에서 남지 않는다.
-static void Start(Game *game)
+void Start(Game *game)
 {
     Game fresh = {0};
     memcpy(fresh.map, dungeon, sizeof dungeon);
@@ -183,17 +190,16 @@ static void Start(Game *game)
     *game = fresh;
 }
 
-static void Help(void)
+// 지형 위에 캐릭터를 그리기만 하므로 이동해도 바닥이나 출구가 사라지지 않는다.
+void Render(Game *game)
 {
+    system("cls");
+
     puts("  W/A/S/D: move   F: attack adjacent enemy   1/2: sword/flame");
     puts("  P: potion (+12 HP, +4 mana)   .: wait   H: help   Q: quit");
     puts("  Collect BOTH treasures ($) and key (k), defeat B, reach E.");
     puts("  Every action except help/invalid input costs a turn. Commands need Enter.");
-}
 
-// 지형 위에 캐릭터를 그리기만 하므로 이동해도 바닥이나 출구가 사라지지 않는다.
-static void Render(Game *game)
-{
     printf("\n+-- CALLBACK DUNGEON -- TURN %d --+\n", game->turn);
     printf("  HP %d/%d | MP %d/%d | POTIONS %d | %s\n", game->hero.hp, MAX_HP,
         game->hero.mana, MAX_MANA, game->hero.potions, game->hero.weaponName);
@@ -211,10 +217,12 @@ static void Render(Game *game)
         }
         putchar('\n');
     }
+
+    fputs("  Action > ", stdout); fflush(stdout);
 }
 
 // 획득은 이동 성공 뒤에만 처리한다. 일회용 타일은 소비 직후 바닥으로 바꾼다.
-static void Move(Game *game, int dx, int dy)
+void Move(Game *game, int dx, int dy)
 {
     int x = game->hero.x + dx, y = game->hero.y + dy;
     if (!Walkable(game, x, y)) { puts("  A wall blocks your path."); return; }
@@ -233,14 +241,15 @@ static void Move(Game *game, int dx, int dy)
 }
 
 // 대상 선택과 공격 방법을 분리한다. 장비만 바꾸면 같은 호출로 다른 기술을 사용한다.
-static void Attack(Game *game)
+void Attack(Game *game)
 {
     for (int i = 0; i < ENEMIES; ++i)
     {
         Monster *enemy = &game->enemies[i];
         if (enemy->hp > 0 && abs(enemy->x - game->hero.x) + abs(enemy->y - game->hero.y) == 1)
         {
-            if (game->hero.weapon != NULL) game->hero.weapon(game, enemy);
+            if (game->hero.weapon != NULL) 
+                game->hero.weapon(game, enemy);
             return;
         }
     }
@@ -248,7 +257,7 @@ static void Attack(Game *game)
 }
 
 // 유효한 행동만 1을 반환한다. 게임 루프가 턴 소비와 적 갱신을 결정한다.
-static int Act(Game *game, int key)
+int Update(Game *game, int key)
 {
     switch (key)
     {
@@ -267,7 +276,6 @@ static int Act(Game *game, int key)
         if (game->hero.mana > MAX_MANA) game->hero.mana = MAX_MANA;
         puts("  Potion used."); break;
     case '.': puts("  You wait. The dungeon does not."); break;
-    case 'h': Help(); return 0;
     default: puts("  Unknown command. H shows help."); return 0;
     }
     return 1;
@@ -277,27 +285,36 @@ int main(void)
 {
     Game game;
     Start(&game);
-    Help();
-    for (;;)
+    Render(&game);
+
+    while(1)
     {
-        Render(&game);
-        if (game.won || game.hero.hp == 0)
-        {
-            puts(game.won ? "  YOU ESCAPED! DUNGEON CLEAR!" : "  YOU FELL. GAME OVER.");
-            puts("  R + Enter: retry | anything else: quit");
-            if (ReadCommand() != 'r') break;
-            Start(&game);
+        //input
+        int key = Input();
+
+        //update
+        if (key == EOF || key == 'q') 
+            break;
+        if (!Update(&game, key)) 
             continue;
-        }
-        fputs("  Action > ", stdout); fflush(stdout);
-        int key = ReadCommand();
-        if (key == EOF || key == 'q') break;
-        if (!Act(&game, key)) continue;
         ++game.turn;
-        if (game.won) continue;
+        
         for (int i = 0; i < ENEMIES && game.hero.hp > 0; ++i)
             if (game.enemies[i].hp > 0 && game.enemies[i].think != NULL)
                 game.enemies[i].think(&game, &game.enemies[i]);
+
+        if (game.won || game.hero.hp == 0)
+        {
+            puts(game.won ? "  YOU ESCAPED! DUNGEON CLEAR!" : "  YOU FELL. GAME OVER.");
+            puts("  R : retry | anything else: quit");
+            if (Input() != 'r') break;
+            Start(&game);
+            continue;
+        }
+
+        //render
+        Render(&game);
     }
+    
     return ferror(stdin) || ferror(stdout) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
