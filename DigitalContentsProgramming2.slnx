@@ -6,7 +6,9 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
   </Folder>
+  <Project Path="FinalExam00/FinalExam00.vcxproj" Id="ff521ecd-f7e9-4a78-bfae-ffb86d844914" />
   <Project Path="FinalExam01/FinalExam01.vcxproj" Id="1cd4e74c-9216-4bce-84c2-e130aa25696e" />
+  <Project Path="FinalExam02/FinalExam02.vcxproj" Id="0fb62530-8cd3-4fb4-9435-169cad1d28cf" />
   <Project Path="FinalExamGameCore/FinalExamGameCore.vcxproj" Id="1fbab031-488f-4b66-9871-829f5d72e1f6" />
   <Project Path="Lecture02_01/Lecture02_01.vcxproj" Id="9a5c2e1f-0ada-4b97-8ec6-ecdf5936fa74" />
   <Project Path="Lecture03_01/Lecture03_01.vcxproj" Id="5dda6e01-8816-4c3f-b2c9-c18d2e822ef2" />
@@ -54,11 +56,10 @@
   <Project Path="Lecture12_02/Lecture12_02.vcxproj" Id="a7b3658e-efbd-498c-b9b2-69092dd3eeaf" />
   <Project Path="Lecture12_03/Lecture12_03.vcxproj" Id="98931ba5-a638-46d3-9ec4-8e60251b6670" />
   <Project Path="Lecture12_04/Lecture12_04.vcxproj" Id="c91e2d3a-34d5-4ce2-8f08-5d590cdec4e6" />
+  <Project Path="Lecture12_05/Lecture12_05.vcxproj" Id="0df850d7-9972-40ae-95fb-bd2a5afc993b" />
   <Project Path="Lecture13_01/Lecture13_01.vcxproj" Id="f5341c70-0d88-4c05-b0f3-e59c8485ed21" />
   <Project Path="Lecture13_02/Lecture13_02.vcxproj" Id="98059716-9ce4-4543-8a3e-05e826f6b5bc" />
   <Project Path="Lecture13_03/Lecture13_03.vcxproj" Id="11285b47-8a96-48a0-a41e-ba5ffef85d01" />
-  <Project Path="Lecture14_01/Lecture14_01.vcxproj" Id="a8975fcd-76d8-49e9-8b10-21aadb4d6c9e" />
-  <Project Path="FinalExam00/FinalExam00.vcxproj" Id="ff521ecd-f7e9-4a78-bfae-ffb86d844914" />
-  <Project Path="Lecture12_05/Lecture12_05.vcxproj" Id="0df850d7-9972-40ae-95fb-bd2a5afc993b" />
   <Project Path="Lecture13_04/Lecture13_04.vcxproj" Id="e5f704fc-9248-410e-b555-c4fab094f540" />
+  <Project Path="Lecture14_01/Lecture14_01.vcxproj" Id="a8975fcd-76d8-49e9-8b10-21aadb4d6c9e" />
 </Solution>

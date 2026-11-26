@@ -1,0 +1,80 @@
+
+[2026-11-21 08:36:59 +09:00] FinalExam01 빌드 오류 수정
+- FinalExam01.vcxproj: 모든 구성에 _CRT_SECURE_NO_WARNINGS, /utf-8, /TC, C17 적용. 기존 SDL 검사는 유지.
+- ranking.c를 컴파일 목록과 Core 필터에 등록.
+- 출력/중간 폴더를 프로젝트 내부 bin/플랫폼/구성 및 obj/플랫폼/구성으로 지정.
+- 빌드 후 dungeonmap.dat를 실행 파일 옆으로 복사. 디버거 작업 폴더도 출력 폴더로 지정.
+- Exam.md에 이번 작업 요구사항 작성. 학생 AI와 게임 규칙 코드는 수정하지 않음.
+- 검증: Debug/Release x x64/Win32 네 구성 빌드 성공. x64 Debug 자동 3턴 실행 정상 종료, 해당 실행의 AI 진단 로그 모두 비어 있음.
+- 기존 --self-test는 AI 행동 기대값 2건 실패(tests.c:248,262). 빌드 오류와 분리하여 BuildLog.txt에 기록.
+
+[2026-11-21 10:56:29 +09:00] 플레이어 이름 / 상태 UI / 열쇠 자동 복귀 / 신규 맵
+- player0.c~player5.c에 playerN_name[64] 문자열 추가. 기존 AI 함수 본문은 유지.
+- player_names.c에서 이름을 조회하고 display.c의 성향 표시를 이름으로 교체.
+- UTF-8 한글/영문 이름을 16칸으로 정렬하고 제어문자 제거. HP 사각 칸과 13칸 리스폰 게이지, 정확한 남은 턴 표시.
+- 현재 콘솔 너비에 따라 순위표를 오른쪽 또는 아래쪽에 배치. 이름/숫자는 고정 필드 폭 사용.
+- key_idle_turns로 미소유 30턴을 세어 최초 위치 복귀. 획득 우선 및 드롭/사망/탈출 시 초기화.
+- Snapshot.key_respawn_remaining과 지도 뒤 KEY_STATUS 확장 추가. 기존 v2/v3 파일 호환.
+- 던전 13x13 -> 17x17 (한 변 +30.8%). 문 주변 기둥/짧은 벽/복수 진입로, 넓은 외곽.
+- 원본 맵 dungeonmap_13x13.dat 보관. Exam.md/Rule.txt에 요구사항과 사용법 기록.
+- --feature-test: 타이머 경계/드롭/사망, 스냅샷 호환, 한글 정렬, 게이지 오버플로, 순위 배치 검사.
+- 검증: Debug/Release x x64/Win32 빌드 및 신규 테스트 모두 PASS.
+- 17x17 맵 60턴 자동 실행 정상 종료. 사망/게이지 표시 확인. 비어 있지 않은 AI 진단 로그 수: 0.
+- 기존 --self-test의 AI 행동 기대값 실패 2건(tests.c:248,262)은 변함없음. 학생 전략을 수정하지 않음.
+
+[2026-11-21 11:37:43 +09:00] 출력 시각 기준 500ms 프레임 / HP 색상
+- main.c의 기본 간격을 1000ms에서 500ms로 변경.
+- 턴 시작 기준/출력 후 대기에서 이전 화면 출력 시각 기준/다음 출력 직전 잔여 대기로 교체.
+- frame_wait_ms = max(0, interval - elapsed). 경과 시간에 이전 렌더, 스냅샷, 전원 AI 및 판정 포함.
+- 실제 출력 시각으로 기준 갱신. --fast는 대기 0. 종료 화면의 중복 redraw 제거.
+- 이동/공격/피격/종료 메시지는 같은 프레임에 출력.
+- HP 2 밝은 고유색, HP 1 어두운 고유색 적용. 열쇠 배경 및 피격 효과도 밝기 구분.
+- Exam.md/Rule.txt 갱신. feature_tests.c에 100ms/499ms/500ms/800ms 경과, fast 및 색상 테스트 추가.
+- 검증: x64/Win32 Debug/Release 빌드 및 feature-test 모두 PASS.
+- 실제 출력: 초기 Turn 0 이후 1~6이 각각 한 번만 출력됨. normal/fast 종료 코드 모두 0.
+- 실제 AI 포함 측정은 빌드 작업과 함께 진행됐으며 normal 간격 1575,1632,3762,1967,1355,1813ms.
+  모든 경우 연산 시간이 500ms를 넘으므로 추가 프레임 대기는 0. 일정한 500ms를 강제하지 않음.
+
+[2026-11-21 12:01:03 +09:00] player0.c~player5.c 기본형 초기화
+- 사용자 요청에 따라 6개 파일의 복잡한 AI 전체를 간단한 동일 예제로 교체.
+- 각 파일의 기존 playerN_name 문자열 및 공개 함수명 유지.
+- fopen -> snapshot_read -> fclose 후 (state.turn + state.self) % 4로 상하좌우 이동 방향 반환.
+- 경로 탐색/전투/열쇠 판단 제거. 학생 구현 위치와 자원 정리 주석 추가.
+- Exam.md와 Rule.txt에 기본형 범위 기록. 코어와 게임 규칙 변경 없음.
+- 검증: x64 Debug 빌드 성공, --feature-test PASS, 8턴 자동 실행 종료 코드 0 및 AI 진단 로그 전부 비어 있음.
+- 이전 전략을 전제로 한 --self-test의 AI 행동 검사는 이번 기본형의 동작 기준으로 사용하지 않음.
+
+[2026-11-21 12:27:29 +09:00] 미사용 레거시 정리
+- 삭제: sample_ai.h (include/호출 없음), FinalExam01 폴더의 FinalExam00.vcxproj/.filters/.user 사본.
+  솔루션의 별도 FinalExam00 프로젝트는 FinalExam00 폴더를 사용하므로 변경하지 않음.
+- 프로젝트/필터에서 삭제된 헤더 참조 제거.
+- tests.c의 role_command/test_role_ai와 기존 열쇠 우선 획득 가정 제거.
+  게임 규칙/맵/순위 검사는 유지하고 전원 worker 유효 명령 및 빈 진단 로그 검사로 대체.
+- --self-test에서 feature_test도 함께 실행하여 현재 코어 검증을 한 번에 수행.
+- display_player_style의 사용하지 않는 attack 인자, input.c의 주석 처리된 출력문 제거.
+- 실행 안내/순위 저장 제목을 FinalExam01로 수정. Rule.txt를 현재 규칙/기본형 AI/500ms 기준으로 통합.
+- 보존: 13x13 비교 맵, 학생용 fopen_s 추적 API, CLI/스냅샷 호환, 기록/산출물.
+- 검증: 모든 .c/.h가 현재 프로젝트 목록에 포함됨. 삭제한 이름에 대한 소스/프로젝트/규칙 문서 참조 없음.
+- x64/Win32 Debug/Release 네 구성 빌드와 전체 --self-test 모두 PASS. 4턴 자동 실행 종료 코드 0.
+
+[2026-11-26 12:43:31 +09:00] FinalExam02: 프로젝트 속성 변경 없는 Windows/MSVC 호환 수정
+- .vcxproj / .filters / .user 수정 없음. SHA256이 작업 전과 모두 동일함.
+- 모든 .c/.h를 UTF-8 BOM으로 저장하고 한글 UI/이름/테스트 문자열에 u8 리터럴 명시.
+- diagnostics.c의 실제 열기 함수를 fopen_s로 변경. 파일/메모리 추적 API 유지.
+- freopen -> freopen_s, fscanf/sscanf -> fscanf_s/sscanf_s, strcpy -> strcpy_s.
+- fscanf_s의 문자열 입력에 버퍼 크기 인수를 추가함. 경고 비활성화나 CRT 경고 우회 매크로를 추가하지 않음.
+- 프로젝트 속성에 맵 복사 단계를 추가하지 않고 main.c에서 표준 VS 출력 경로 기준으로 기본 맵 검색.
+- 사용 안내 및 순위 파일 제목의 프로젝트 이름을 FinalExam02로 수정. 학생 AI의 판단 로직과 게임 규칙은 유지.
+- 검증: Debug/Release x x64/Win32 4개 구성 빌드 경고/오류 0, --self-test(Feature tests 포함) 4개 구성 모두 PASS.
+- 검증: 4개 구성 모두 무관한 작업 폴더에서 기본 맵으로 2턴 자동 경기 정상 시작/종료.
+
+[2026-11-26 12:55:40 +09:00] 공격 충전 3 및 HP/ATK 게이지
+- MAX_ATTACK_CHARGE=3, PlayerState.attack_charge 추가. 시작/리스폰 3, 사망/탈출 시 0.
+- 허용된 공격(빗나감 포함)은 1 소모. 인식 가능한 비공격 명령은 성공/취소와 무관하게 +1, 최대 3.
+- 충전 0 공격/열쇠 소지 공격은 취소 및 기존 HP -1. 죽음·휴식·탈출 중/잘못된 enum에는 충전 없음.
+- HP 빨간 2칸+숫자, ATK 초록 3칸+숫자. 120열 미만은 상태 행을 두 줄로 나눠 정렬.
+- v3 지도 뒤 ATTACK_STATUS 확장으로 6명 충전 공개. 구형 스냅샷은 최대 충전 기본값, 범위/부호/개수/오버플로 오류 거부.
+- 학생 AI 소스 및 프로젝트 속성 변경 없음. .vcxproj/.filters/.user SHA256 불변.
+- 검증: 네 구성(Debug/Release x x64/Win32) 오류·경고 없이 빌드, self-test/feature-test 모두 PASS.
+- 검증: 3회 공격 소진·4회차 취소·이동/집기/버리기 충전·상한·열쇠 제한·사망/리스폰·구형/신형 상태 읽기 검사 통과.
+- 실제 짧은 자동 경기에서 HP [#][#] 2/2 ATK [#][#][#] 3/3 출력 확인.
