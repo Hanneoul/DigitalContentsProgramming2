@@ -20,6 +20,7 @@ int game_load(Game *game, FILE *file, char *error, size_t capacity);
 void game_begin_turn(Game *game);
 void game_resolve(Game *game, const Command commands[PLAYER_COUNT]);
 int snapshot_write(const Game *game, int player, const char *path);
+const char *snapshot_write_error(void);
 void display_init(int plain);
 void display_game(const Game *game, const char *message, int effects);
 void input_init(void);

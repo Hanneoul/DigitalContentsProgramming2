@@ -115,7 +115,10 @@ int main(int argc, char **argv)
         for (i = 0; i < PLAYER_COUNT; ++i) {
             commands[i] = (Command)-1;
             snprintf(snapshots[i], sizeof(snapshots[i]), "%s\\player%d_state.dat", run_dir, i);
-            if (!snapshot_write(&game, i, snapshots[i])) { fputs("Snapshot write failed.\n", stderr); result = 1; goto done; }
+            if (!snapshot_write(&game, i, snapshots[i])) {
+                fprintf(stderr, "Snapshot write failed: turn=%d player=P%d %s\n", game.turn, i, snapshot_write_error());
+                result = 1; goto done;
+            }
         }
         for (i = 0; i < PLAYER_COUNT; ++i) {
             if (game.players[i].hp <= 0 || game.players[i].rank) continue;

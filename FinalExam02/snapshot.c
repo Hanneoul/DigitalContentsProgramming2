@@ -1,13 +1,45 @@
 ﻿#include <inttypes.h>
 #include "game.h"
 #include <errno.h>
+#include <windows.h>
+
+static char write_error[1024];
+
+/* Parent-only diagnostic; record errors before cleanup can overwrite OS/CRT codes. */
+const char *snapshot_write_error(void) { return write_error; }
+
+static int write_fail(const char *stage, const char *path, int crt_error, unsigned long os_error)
+{
+    char description[128] = "";
+    if (crt_error) strerror_s(description, sizeof(description), crt_error);
+    snprintf(write_error, sizeof(write_error), "stage=%s path=%s errno=%d (%s) Win32=%lu",
+        stage, path ? path : "(null)", crt_error, description, os_error);
+    return 0;
+}
 
 /* Publish the same turn-start state for every player, differing only in self ID. */
 int snapshot_write(const Game *g, int player, const char *path)
 {
     int y, x, i, ok;
-    FILE *file = fopen(path, "w");
-    if (!file) return 0;
+    char temporary[MAX_PATH];
+    int attempt, length, saved_errno;
+    unsigned long os_error;
+    FILE *file = NULL;
+    write_error[0] = '\0';
+    if (!g || !path) return write_fail("arguments", path, EINVAL, 0);
+    length = snprintf(temporary, sizeof(temporary), "%s.tmp", path);
+    if (length < 0 || length >= (int)sizeof(temporary)) return write_fail("path length", path, ENAMETOOLONG, 0);
+    /* Never truncate the public file. Readers see either the previous complete
+       snapshot or the newly completed one, never a half-written map. */
+    for (attempt = 0; attempt < 11; ++attempt) {
+        _set_doserrno(0);
+        file = fopen(temporary, "w");
+        if (file) break;
+        saved_errno = errno; _get_doserrno(&os_error);
+        if (attempt == 10 || (os_error != ERROR_SHARING_VIOLATION && os_error != ERROR_LOCK_VIOLATION && os_error != ERROR_ACCESS_DENIED))
+            return write_fail("open temporary", temporary, saved_errno, os_error);
+        Sleep(20);
+    }
     fprintf(file, "FGC_STATE 3\n%d %d %d %d %d %d %d %d %d %d\n",
         g->size, g->turn, player, g->key_owner, g->key.x, g->key.y,
         g->key_start.x, g->key_start.y, g->exit.x, g->exit.y);
@@ -32,8 +64,23 @@ int snapshot_write(const Game *g, int player, const char *path)
     for (i = 0; i < PLAYER_COUNT; ++i) fprintf(file, " %d", g->players[i].attack_charge);
     fputc('\n', file);
     ok = !ferror(file);
-    if (fclose(file) != 0) ok = 0;
-    return ok;
+    saved_errno = ok ? 0 : (errno ? errno : EIO);
+    _get_doserrno(&os_error);
+    if (fclose(file) != 0) { ok = 0; saved_errno = errno ? errno : EIO; _get_doserrno(&os_error); }
+    if (!ok) {
+        write_fail("write/close temporary", temporary, saved_errno, os_error);
+        DeleteFileA(temporary);
+        return 0;
+    }
+    for (attempt = 0; attempt < 11; ++attempt) {
+        if (MoveFileExA(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return 1;
+        os_error = GetLastError();
+        if (attempt == 10 || (os_error != ERROR_SHARING_VIOLATION && os_error != ERROR_LOCK_VIOLATION && os_error != ERROR_ACCESS_DENIED)) break;
+        Sleep(20);
+    }
+    write_fail("replace public snapshot", path, 0, os_error);
+    DeleteFileA(temporary);
+    return 0;
 }
 
 /* Read public v3 ranks; legacy v2 files have every player still racing. */

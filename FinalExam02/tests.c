@@ -395,12 +395,66 @@ static void test_attack_charge(void)
     CHECK(g.players[0].hp == 0 && g.players[0].attack_charge == 0);
 }
 
+/* A temporary external reader/scan may briefly deny file replacement. */
+static DWORD WINAPI release_snapshot_lock(LPVOID parameter)
+{
+    Sleep(60);
+    CloseHandle((HANDLE)parameter);
+    return 0;
+}
+
+/* Preserve complete state on permanent lock, recover after a short lock, and
+   prove repeated saves close their tracked FILEs rather than exhausting slots. */
+static void test_snapshot_write_failures(void)
+{
+    Game g;
+    Command commands[PLAYER_COUNT];
+    Snapshot parsed;
+    char directory[MAX_PATH], path[MAX_PATH], bad_path[MAX_PATH];
+    HANDLE lock, thread;
+    FILE *file;
+    int i;
+    arena(&g, commands); g.turn = 42;
+    if (!GetTempPathA(sizeof(directory), directory) || !GetTempFileNameA(directory, "fsw", 0, path)) { CHECK(0); return; }
+    CHECK(snapshot_write(&g, 0, path));
+    lock = CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    CHECK(lock != INVALID_HANDLE_VALUE);
+    if (lock != INVALID_HANDLE_VALUE) {
+        g.turn = 43;
+        CHECK(!snapshot_write(&g, 0, path));
+        CHECK(strstr(snapshot_write_error(), "replace public snapshot") != NULL);
+        CHECK(strstr(snapshot_write_error(), "Win32=32") || strstr(snapshot_write_error(), "Win32=5") || strstr(snapshot_write_error(), "Win32=33"));
+        CloseHandle(lock);
+        file = fopen(path, "r"); CHECK(file != NULL);
+        if (file) { CHECK(snapshot_read(file, &parsed) && parsed.turn == 42); fclose(file); }
+        lock = CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        CHECK(lock != INVALID_HANDLE_VALUE);
+        if (lock != INVALID_HANDLE_VALUE) {
+            thread = CreateThread(NULL, 0, release_snapshot_lock, lock, 0, NULL);
+            CHECK(thread != NULL);
+            if (thread) {
+                CHECK(snapshot_write(&g, 0, path));
+                CHECK(WaitForSingleObject(thread, 2000) == WAIT_OBJECT_0);
+                CloseHandle(thread);
+            } else CloseHandle(lock);
+        }
+    }
+    for (i = 0; i < 300; ++i) { g.turn = i + 1; CHECK(snapshot_write(&g, 0, path)); }
+    file = fopen(path, "r"); CHECK(file != NULL);
+    if (file) { CHECK(snapshot_read(file, &parsed) && parsed.turn == 300); fclose(file); }
+    snprintf(bad_path, sizeof(bad_path), "%s\\missing\\state.dat", path);
+    CHECK(!snapshot_write(&g, 0, bad_path));
+    CHECK(strstr(snapshot_write_error(), "open temporary") != NULL);
+    DeleteFileA(path);
+}
+
 /* Instructor regression entry point; normal gameplay never executes test fixtures. */
 int self_test(void)
 {
     test_collisions(); test_attacks(); test_items(); test_respawn(); test_files();
     test_carrier_attack_penalty();
     test_attack_charge();
+    test_snapshot_write_failures();
     failures += feature_test();
     test_escape_ranking(); test_rank_files(); test_no_escape_draw();
     printf("Self-test: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
